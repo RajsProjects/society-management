@@ -1,4 +1,4 @@
-package com.Application.SocietyManagement.users.issue.service;
+package com.Application.SocietyManagement.issue.service;
 
 import com.Application.SocietyManagement.issue.dto.IssueRequest;
 import com.Application.SocietyManagement.issue.dto.IssueResponse;

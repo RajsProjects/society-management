@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: society-management
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    networks:
+      - society-network
+
+  mongo:
+    image: mongo:7.0
+    container_name: society-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: Society_DB
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - society-network
+
+volumes:
+  mongo-data:
+
+networks:
+  society-network:
+    driver: bridge

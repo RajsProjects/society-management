@@ -1,4 +1,4 @@
-package com.Application.SocietyManagement.users.communication.service;
+package com.Application.SocietyManagement.communication.service;
 
 import com.Application.SocietyManagement.communication.dto.AnnouncementRequest;
 import com.Application.SocietyManagement.communication.dto.AnnouncementResponse;

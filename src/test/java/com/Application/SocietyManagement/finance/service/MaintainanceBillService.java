@@ -1,4 +1,4 @@
-package com.Application.SocietyManagement.users.finance.service;
+package com.Application.SocietyManagement.finance.service;
 
 import com.Application.SocietyManagement.finance.dto.CreateBillRequest;
 import com.Application.SocietyManagement.finance.dto.MaintenanceBillDto;
