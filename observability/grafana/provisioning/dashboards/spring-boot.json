@@ -1,0 +1,86 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Society Management - Spring Boot",
+    "tags": ["spring-boot"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count[1m])",
+            "legendFormat": "{{method}} {{uri}} {{status}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "HTTP Response Time (p99)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[1m]))",
+            "legendFormat": "p99 {{uri}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "JVM Memory Used",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes",
+            "legendFormat": "{{area}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Active HTTP Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "tomcat_connections_active_current_connections",
+            "legendFormat": "Active connections"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "MongoDB Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(mongodb_driver_commands_seconds_count[1m])",
+            "legendFormat": "{{command}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "JVM Threads",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "jvm_threads_live_threads",
+            "legendFormat": "Live threads"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      }
+    ],
+    "refresh": "5s",
+    "schemaVersion": 16,
+    "version": 1
+  },
+  "overwrite": true
+}

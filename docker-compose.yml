@@ -11,28 +11,47 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     env_file:
       - .env
-    depends_on:
-      - mongo
     restart: unless-stopped
     networks:
       - society-network
 
-  mongo:
-    image: mongo:7.0
-    container_name: society-mongo
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
     ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-      MONGO_INITDB_DATABASE: Society_DB
+      - "9090:9090"
     volumes:
-      - mongo-data:/data/db
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    restart: unless-stopped
     networks:
       - society-network
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
+    networks:
+      - society-network
+    depends_on:
+      - prometheus
+
 volumes:
   mongo-data:
+  prometheus-data:
+  grafana-data:
 
 networks:
   society-network:
