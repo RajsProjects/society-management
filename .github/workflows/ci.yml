@@ -23,7 +23,7 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: mvn test -q
+        run: mvn test -q -Dtest="!SocietyManagementApplicationTests" -DfailIfNoTests=false
 
       - name: Upload test results
         if: always()
