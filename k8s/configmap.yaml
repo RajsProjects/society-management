@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: society-config
+  namespace: society-management
+data:
+  SERVER_PORT: "8080"
+  SPRING_PROFILES_ACTIVE: "prod"

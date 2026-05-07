@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+jwt:
+  secret: PgBRR9NDbSDi9GshN2C4RKqFqfMkhkbntucokTaXB7g=
+  expiration: 86400000
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://Suman_Mandal:zw53KjV6YFiAmPI9@cluster0.aqmaut2.mongodb.net/Society_DB?retryWrites=true&w=majority
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    mapper:
+      accept-case-insensitive-enums: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: WARN
