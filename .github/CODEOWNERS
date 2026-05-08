@@ -1,0 +1,6 @@
+# Global owner - review required from repo owner on all PRs
+* @RajsProjects
+
+# Core security files require extra review
+src/main/java/com/Application/SocietyManagement/core/security/ @RajsProjects
+src/main/java/com/Application/SocietyManagement/core/config/ @RajsProjects
