@@ -1,7 +1,9 @@
 package com.Application.SocietyManagement.users.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.Map;
 
 @RestController
@@ -9,12 +11,12 @@ import java.util.Map;
 public class HealthController {
 
     @GetMapping("/health")
-    public Map<String, String> health() {
-        return Map.of("status", "UP");
-    }
-
-    @GetMapping("/hello")
-    public Map<String, String> hello() {
-        return Map.of("message", "Society Management API is running");
+    public ResponseEntity<Map<String, Object>> health() {
+        return ResponseEntity.ok(Map.of(
+                "status", "UP",
+                "version", "1.0.0",
+                "timestamp", Instant.now(),
+                "service", "Society Management API"
+        ));
     }
 }
