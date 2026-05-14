@@ -1,8 +1,11 @@
 package com.Application.SocietyManagement.issue.service;
 
-import com.Application.SocietyManagement.issue.dto.*;
+import com.Application.SocietyManagement.issue.dto.CreatorDto;
+import com.Application.SocietyManagement.issue.dto.IssueRequest;
+import com.Application.SocietyManagement.issue.dto.IssueResponse;
 import com.Application.SocietyManagement.issue.entity.Issue;
 import com.Application.SocietyManagement.issue.entity.IssueVote;
+import com.Application.SocietyManagement.issue.enums.IssuePriority;
 import com.Application.SocietyManagement.issue.enums.IssueStatus;
 import com.Application.SocietyManagement.issue.repository.IssueRepository;
 import com.Application.SocietyManagement.issue.repository.IssueVoteRepository;
@@ -10,12 +13,17 @@ import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,8 +41,7 @@ public class IssueService {
                 .creatorId(creatorId)
                 .build();
 
-        Issue saved = issueRepository.save(issue);
-        return toResponse(saved);
+        return toResponse(issueRepository.save(issue));
     }
 
     public PagedResponse<IssueResponse> getIssues(IssueStatus status,
@@ -44,7 +51,6 @@ public class IssueService {
         Sort.Direction dir = direction.equalsIgnoreCase("asc")
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
 
-        // voteCount sorting handled in memory since it's a derived field
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(dir, "createdAt"));
 
@@ -52,12 +58,9 @@ public class IssueService {
                 ? issueRepository.findByStatus(status, pageable)
                 : issueRepository.findAll(pageable);
 
-        List<IssueResponse> content = result.getContent()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        // use batch method for list operations
+        List<IssueResponse> content = toResponseList(result.getContent());
 
-        // sort by voteCount if requested
         if ("voteCount".equalsIgnoreCase(sortBy)) {
             content = content.stream()
                     .sorted((a, b) -> dir == Sort.Direction.DESC
@@ -81,8 +84,7 @@ public class IssueService {
         return toResponse(issueRepository.save(issue));
     }
 
-    public IssueResponse updatePriority(String issueId,
-                                        com.Application.SocietyManagement.issue.enums.IssuePriority priority) {
+    public IssueResponse updatePriority(String issueId, IssuePriority priority) {
         Issue issue = findIssueById(issueId);
         issue.setPriority(priority);
         return toResponse(issueRepository.save(issue));
@@ -112,7 +114,6 @@ public class IssueService {
                 .findByIssueIdAndUserId(issueId, userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Vote not found"));
-
         issueVoteRepository.delete(vote);
     }
 
@@ -122,10 +123,9 @@ public class IssueService {
                         HttpStatus.NOT_FOUND, "Issue not found"));
     }
 
+    // single issue response - for create/update operations
     private IssueResponse toResponse(Issue issue) {
-        User creator = userRepository.findById(issue.getCreatorId())
-                .orElse(null);
-
+        User creator = userRepository.findById(issue.getCreatorId()).orElse(null);
         CreatorDto creatorDto = creator != null
                 ? CreatorDto.builder()
                   .id(creator.getId())
@@ -146,5 +146,43 @@ public class IssueService {
                 .createdAt(issue.getCreatedAt())
                 .updatedAt(issue.getUpdatedAt())
                 .build();
+    }
+
+    // batch response - for list operations (optimized - fewer DB calls)
+    private List<IssueResponse> toResponseList(List<Issue> issues) {
+        if (issues.isEmpty()) return List.of();
+
+        List<String> creatorIds = issues.stream()
+                .map(Issue::getCreatorId)
+                .distinct()
+                .toList();
+
+        Map<String, User> creators = userRepository.findAllById(creatorIds)
+                .stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        return issues.stream().map(issue -> {
+            User creator = creators.get(issue.getCreatorId());
+            CreatorDto creatorDto = creator != null
+                    ? CreatorDto.builder()
+                      .id(creator.getId())
+                      .firstName(creator.getFirstName())
+                      .lastName(creator.getLastName())
+                      .build()
+                    : null;
+
+            return IssueResponse.builder()
+                    .id(issue.getId())
+                    .title(issue.getTitle())
+                    .description(issue.getDescription())
+                    .photoUrl(issue.getPhotoUrl())
+                    .status(issue.getStatus())
+                    .priority(issue.getPriority())
+                    .creator(creatorDto)
+                    .voteCount(issueVoteRepository.countByIssueId(issue.getId()))
+                    .createdAt(issue.getCreatedAt())
+                    .updatedAt(issue.getUpdatedAt())
+                    .build();
+        }).toList();
     }
 }
