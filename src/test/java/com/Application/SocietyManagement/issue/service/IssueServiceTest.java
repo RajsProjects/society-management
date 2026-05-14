@@ -112,7 +112,7 @@ class IssueServiceTest {
     void getIssues_noFilter_returnsAll() {
         Page<Issue> page = new PageImpl<>(List.of(issue));
         when(issueRepository.findAll(any(Pageable.class))).thenReturn(page);
-        when(userRepository.findById(any())).thenReturn(Optional.of(creator));
+        when(userRepository.findAllById(any())).thenReturn(List.of(creator));
         when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
         PagedResponse<IssueResponse> result =
@@ -127,7 +127,7 @@ class IssueServiceTest {
         Page<Issue> page = new PageImpl<>(List.of(issue));
         when(issueRepository.findByStatus(eq(IssueStatus.OPEN), any(Pageable.class)))
                 .thenReturn(page);
-        when(userRepository.findById(any())).thenReturn(Optional.of(creator));
+        when(userRepository.findAllById(any())).thenReturn(List.of(creator));
         when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
         issueService.getIssues(IssueStatus.OPEN, "createdAt", "desc", 0, 20);
@@ -143,7 +143,7 @@ class IssueServiceTest {
 
         Page<Issue> page = new PageImpl<>(List.of(issue1, issue2));
         when(issueRepository.findAll(any(Pageable.class))).thenReturn(page);
-        when(userRepository.findById(any())).thenReturn(Optional.of(creator));
+        when(userRepository.findAllById(any())).thenReturn(List.of(creator));
         when(issueVoteRepository.countByIssueId(null)).thenReturn(5L, 2L);
 
         PagedResponse<IssueResponse> result =
@@ -152,7 +152,6 @@ class IssueServiceTest {
         assertThat(result.getContent().get(0).getVoteCount())
                 .isGreaterThanOrEqualTo(result.getContent().get(1).getVoteCount());
     }
-
     // ── updateStatus tests ──
 
     @Test
