@@ -16,3 +16,9 @@ All notable changes to this project will be documented here.
 - Prometheus and Grafana observability
 - GitHub Actions CI/CD pipeline
 - Unit tests with JUnit 5 and Mockito
+- k6 load test scripts for all modules
+- Performance report in README
+
+### Fixed
+- Optimized issue list response with batch DB queries (reduced N+1 queries)
+- Updated MongoDB URI with connection pool parameters

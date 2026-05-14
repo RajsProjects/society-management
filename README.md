@@ -223,7 +223,54 @@ POST /api/v1/auth/login
   "traceId": "a3f2b1c4"
 }
 ```
+## ⚡ Performance
 
+Load tested with [k6](https://k6.io) against MongoDB Atlas free tier from India.
+
+### Results Summary
+
+| Scenario | Concurrent Users | Avg Response | p95 | Error Rate |
+|----------|-----------------|-------------|-----|------------|
+| Authentication | 50 | 472ms | 662ms | 0% |
+| Maintenance Billing | 30 | 2.73s | 8.57s | 0% |
+| Issue Management | 100 | 10.96s | 39.87s | 0% |
+| Full System (all endpoints) | 200 | 4.42s | 23.55s | **0%** |
+
+### Key Findings
+
+✅ **Zero errors across all tests** — the API never crashed or returned incorrect responses under load
+
+✅ **100% check success rate** on full system test (7021/7021 checks passed)
+
+✅ **Zero failed requests** across 8,788 total HTTP requests at 200 concurrent users
+
+⚠️ **Response times exceed targets** due to MongoDB Atlas free tier limitations:
+- Free tier has limited connections and higher network latency
+- App is running locally in India, Atlas cluster in AP_SOUTH_1
+- Each issue list request makes multiple sequential DB calls
+
+### Expected Production Performance
+
+Deploying to a VPS in the same region as Atlas (AP_SOUTH_1) with a dedicated cluster will significantly reduce latency. Expected improvements:
+
+| Metric | Free Tier (Current) | Dedicated Cluster (Expected) |
+|--------|--------------------|-----------------------------|
+| Auth p95 | 662ms | < 100ms |
+| Full flow p95 | 23.55s | < 500ms |
+| Issue list p95 | 39.87s | < 300ms |
+
+### Running Load Tests
+
+```bash
+# Install k6
+winget install k6 --source winget
+
+# Run individual tests
+k6 run k6/auth-test.js
+k6 run k6/billing-test.js
+k6 run k6/issues-test.js
+k6 run k6/full-test.js
+```
 ---
 
 ## 🧪 Running Tests
