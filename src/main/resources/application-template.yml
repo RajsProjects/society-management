@@ -8,7 +8,7 @@ jwt:
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/Society_DB?retryWrites=true&w=majority
+      uri: mongodb+srv://user:pass@cluster.mongodb.net/Society_DB?retryWrites=true&w=majority&connectTimeoutMS=10000&socketTimeoutMS=10000&maxPoolSize=50&minPoolSize=5
   jackson:
     serialization:
       write-dates-as-timestamps: false
