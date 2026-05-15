@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; padding: 32px; }
+        .header { background-color: #F59E0B; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .content { padding: 24px 0; }
+        .bill-details { background: #FEF3C7; border-radius: 8px; padding: 16px; margin: 16px 0; }
+        .amount { font-size: 24px; font-weight: bold; color: #F59E0B; }
+        .footer { text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 24px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>⚠️ Payment Reminder</h1>
+        <p>Your bill is due in 3 days</p>
+    </div>
+    <div class="content">
+        <p>Dear <strong th:text="${residentName}">Resident</strong>,</p>
+        <p>This is a friendly reminder that your maintenance bill is due in <strong>3 days</strong>.</p>
+        <div class="bill-details">
+            <p><strong>Apartment:</strong> <span th:text="${apartmentNumber}">A-101</span></p>
+            <p><strong>Billing Month:</strong> <span th:text="${billingMonth}">2026-05</span></p>
+            <p><strong>Due Date:</strong> <span th:text="${dueDate}">2026-05-31</span></p>
+            <p><strong>Amount Due:</strong> <span class="amount">₹<span th:text="${amount}">1500</span></span></p>
+        </div>
+        <p>Please make your payment before the due date to avoid your bill being marked as overdue.</p>
+    </div>
+    <div class="footer">
+        <p>This is an automated email from Society Management System.</p>
+    </div>
+</div>
+</body>
+</html>

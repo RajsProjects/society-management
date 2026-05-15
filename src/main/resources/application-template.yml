@@ -14,6 +14,11 @@ spring:
       write-dates-as-timestamps: false
     mapper:
       accept-case-insensitive-enums: true
+    mail:
+      host: smtp.gmail.com
+      port: 587
+      username: YOUR_GMAIL_ADDRESS
+      password: YOUR_GMAIL_APP_PASSWORD
 
 springdoc:
   api-docs:

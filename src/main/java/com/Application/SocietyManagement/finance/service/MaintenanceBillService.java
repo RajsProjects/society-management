@@ -1,5 +1,7 @@
 package com.Application.SocietyManagement.finance.service;
 
+import com.Application.SocietyManagement.communication.email.event.BillGeneratedEvent;
+import com.Application.SocietyManagement.communication.email.event.PaymentSuccessEvent;
 import com.Application.SocietyManagement.finance.dto.*;
 import com.Application.SocietyManagement.finance.entity.MaintenanceBill;
 import com.Application.SocietyManagement.finance.enums.BillStatus;
@@ -10,6 +12,7 @@ import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,20 +33,18 @@ public class MaintenanceBillService {
 
     private final MaintenanceBillRepository billRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher; // ← add this
 
     public MaintenanceBillDto createBill(CreateBillRequest request) {
-        // validate user exists
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
-        // validate apartment matches
         if (!user.getApartmentNumber().equals(request.getApartmentNumber())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Apartment number does not match user");
         }
 
-        // check duplicate bill
         if (billRepository.existsByApartmentNumberAndBillingMonth(
                 request.getApartmentNumber(), request.getBillingMonth())) {
             throw new ResponseStatusException(
@@ -58,7 +59,12 @@ public class MaintenanceBillService {
                 .dueDate(request.getDueDate())
                 .build();
 
-        return MaintenanceBillDto.from(billRepository.save(bill));
+        MaintenanceBill saved = billRepository.save(bill);
+
+        // publish event - email sent async, does not block response
+        eventPublisher.publishEvent(new BillGeneratedEvent(this, saved, user));
+
+        return MaintenanceBillDto.from(saved);
     }
 
     public PagedResponse<MaintenanceBillDto> getBills(User currentUser,
@@ -123,6 +129,9 @@ public class MaintenanceBillService {
         bill.setStatus(BillStatus.PAID);
         bill.setUpiTransactionId(request.getUpiTransactionId());
         billRepository.save(bill);
+
+        // fire event — email sends async, does not block API response
+        eventPublisher.publishEvent(new PaymentSuccessEvent(this, bill, currentUser));
 
         return Map.of(
                 "message", "Payment successful",

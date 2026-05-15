@@ -31,9 +31,19 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment & Secrets ###
 .env
 src/main/resources/application.yml
 src/main/resources/application.yaml
-*.class
-.idea/
 k8s/secret.yaml
+
+### Compiled ###
+*.class
+
+### Node ###
+node_modules/
+
+### k6 results ###
+k6/results/
+k6/*.json
