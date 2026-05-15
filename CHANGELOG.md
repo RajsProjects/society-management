@@ -18,6 +18,14 @@ All notable changes to this project will be documented here.
 - Unit tests with JUnit 5 and Mockito
 - k6 load test scripts for all modules
 - Performance report in README
+- Email notification service for billing events
+- Bill generated email notification
+- Payment success email confirmation
+- 3-day bill due reminder scheduler
+- Overdue bill notification scheduler
+- POST /api/v1/communication/email/test endpoint
+- 4 HTML email templates using Thymeleaf
+- Async email sending using Spring ApplicationEvent
 
 ### Fixed
 - Optimized issue list response with batch DB queries (reduced N+1 queries)
