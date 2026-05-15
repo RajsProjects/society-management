@@ -1,5 +1,7 @@
 package com.Application.SocietyManagement.finance.service;
 
+import com.Application.SocietyManagement.communication.email.event.BillGeneratedEvent;
+import com.Application.SocietyManagement.communication.email.event.PaymentSuccessEvent;
 import com.Application.SocietyManagement.finance.dto.CreateBillRequest;
 import com.Application.SocietyManagement.finance.dto.MaintenanceBillDto;
 import com.Application.SocietyManagement.finance.dto.PayBillRequest;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +41,7 @@ class MaintenanceBillServiceTest {
 
     @Mock private MaintenanceBillRepository billRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private MaintenanceBillService billService;
@@ -100,6 +104,7 @@ class MaintenanceBillServiceTest {
         assertThat(result.getApartmentNumber()).isEqualTo("A-101");
         assertThat(result.getAmount()).isEqualByComparingTo("1500.00");
         assertThat(result.getStatus()).isEqualTo(BillStatus.PENDING);
+        verify(eventPublisher).publishEvent(any(BillGeneratedEvent.class)); // ← add this
     }
 
     @Test
@@ -200,12 +205,6 @@ class MaintenanceBillServiceTest {
 
     @Test
     void payBill_success_marksBillAsPaid() {
-        residentUser = User.builder()
-                .email("resident@test.com")
-                .apartmentNumber("A-101")
-                .role(Roles.RESIDENT)
-                .status(Status.ACTIVE)
-                .build();
         ReflectionTestUtils.setField(residentUser, "id", "resident123");
         pendingBill.setUserId("resident123");
 
@@ -218,6 +217,7 @@ class MaintenanceBillServiceTest {
         assertThat(result).containsEntry("status", "PAID");
         assertThat(pendingBill.getStatus()).isEqualTo(BillStatus.PAID);
         assertThat(pendingBill.getUpiTransactionId()).isEqualTo("UPI1234567890");
+        verify(eventPublisher).publishEvent(any(PaymentSuccessEvent.class)); // ← add this
     }
 
     @Test
