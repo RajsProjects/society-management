@@ -29,10 +29,15 @@ public class JwtService {
                 .claim("userId", user.getId())
                 .claim("role", user.getRole().name())
                 .claim("status", user.getStatus().name())
+                .claim("societyId", user.getSocietyId())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    public String extractSocietyId(String token) {
+        return getClaims(token).get("societyId", String.class);
     }
 
     public String extractEmail(String token) {

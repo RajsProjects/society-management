@@ -1,5 +1,6 @@
 package com.Application.SocietyManagement.core.security;
 
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
 import jakarta.annotation.Nonnull;
@@ -55,5 +56,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+
+        String societyId = jwtService.extractSocietyId(token);
+        TenantContext.setSocietyId(societyId);
+
+        // make sure to clear after request
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            TenantContext.clear();
+        }
     }
 }

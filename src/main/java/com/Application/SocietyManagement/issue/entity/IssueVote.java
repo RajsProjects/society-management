@@ -16,4 +16,5 @@ public class IssueVote extends BaseEntity {
 
     private String issueId;
     private String userId;
+    private String societyId;
 }

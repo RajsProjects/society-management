@@ -31,10 +31,13 @@ public class AdminSeeder implements CommandLineRunner {
             }
 
             User admin = User.builder()
-                    .email(email)
-                    .passwordHash(passwordEncoder.encode(password))
+                    .email("admin@society.com")
+                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .firstName("Admin")
+                    .lastName("User")
                     .role(Roles.ADMIN)
                     .status(Status.ACTIVE)
+                    .societyId("default") 
                     .build();
 
             userRepository.save(admin);
