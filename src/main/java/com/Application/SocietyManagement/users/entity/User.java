@@ -60,4 +60,6 @@ public class User extends BaseEntity implements UserDetails {
     public boolean isEnabled() {
         return status == Status.ACTIVE;
     }
+
+    private String societyId;
 }

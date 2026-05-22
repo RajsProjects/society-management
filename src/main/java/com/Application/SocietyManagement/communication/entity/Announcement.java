@@ -17,4 +17,5 @@ public class Announcement extends BaseEntity {
     private String content;
     private AnnouncementType type;
     private String authorId;
+    private String societyId;
 }

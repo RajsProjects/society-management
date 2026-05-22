@@ -27,4 +27,5 @@ public class MaintenanceBill extends BaseEntity {
     private BillStatus status = BillStatus.PENDING;
 
     private String upiTransactionId;
+    private String societyId;
 }

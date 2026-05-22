@@ -25,4 +25,5 @@ public class Issue extends BaseEntity {
     private IssuePriority priority = IssuePriority.LOW;
 
     private String creatorId;
+    private String societyId;
 }
