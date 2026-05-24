@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.finance.service;
 
 import com.Application.SocietyManagement.communication.email.event.BillGeneratedEvent;
 import com.Application.SocietyManagement.communication.email.event.PaymentSuccessEvent;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.finance.dto.*;
 import com.Application.SocietyManagement.finance.entity.MaintenanceBill;
 import com.Application.SocietyManagement.finance.enums.BillStatus;
@@ -42,13 +43,20 @@ public class MaintenanceBillService {
 
         if (!user.getApartmentNumber().equals(request.getApartmentNumber())) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Apartment number does not match user");
+                    HttpStatus.BAD_REQUEST,
+                    "Apartment number does not match user");
         }
 
-        if (billRepository.existsByApartmentNumberAndBillingMonth(
-                request.getApartmentNumber(), request.getBillingMonth())) {
+        String societyId = TenantContext.getSocietyId();
+
+        // check duplicate with societyId
+        if (billRepository.existsByApartmentNumberAndBillingMonthAndSocietyId(
+                request.getApartmentNumber(),
+                request.getBillingMonth(),
+                societyId)) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Bill already exists for this billing month");
+                    HttpStatus.CONFLICT,
+                    "Bill already exists for this billing month");
         }
 
         MaintenanceBill bill = MaintenanceBill.builder()
@@ -57,19 +65,18 @@ public class MaintenanceBillService {
                 .amount(request.getAmount())
                 .billingMonth(request.getBillingMonth())
                 .dueDate(request.getDueDate())
+                .societyId(societyId) // ← add
                 .build();
 
         MaintenanceBill saved = billRepository.save(bill);
-
-        // publish event - email sent async, does not block response
         eventPublisher.publishEvent(new BillGeneratedEvent(this, saved, user));
-
         return MaintenanceBillDto.from(saved);
     }
 
     public PagedResponse<MaintenanceBillDto> getBills(User currentUser,
                                                       BillStatus status,
                                                       int page, int size) {
+        String societyId = TenantContext.getSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -77,14 +84,16 @@ public class MaintenanceBillService {
         boolean isAdmin = currentUser.getRole() == Roles.ADMIN;
 
         if (isAdmin && status != null) {
-            result = billRepository.findByStatus(status, pageable);
+            result = billRepository.findByStatusAndSocietyId(
+                    status, societyId, pageable);
         } else if (isAdmin) {
-            result = billRepository.findAll(pageable);
+            result = billRepository.findBySocietyId(societyId, pageable);
         } else if (status != null) {
-            result = billRepository.findByUserIdAndStatus(
-                    currentUser.getId(), status, pageable);
+            result = billRepository.findByUserIdAndStatusAndSocietyId(
+                    currentUser.getId(), status, societyId, pageable);
         } else {
-            result = billRepository.findByUserId(currentUser.getId(), pageable);
+            result = billRepository.findByUserIdAndSocietyId(
+                    currentUser.getId(), societyId, pageable);
         }
 
         return PagedResponse.<MaintenanceBillDto>builder()
@@ -139,11 +148,13 @@ public class MaintenanceBillService {
         );
     }
 
-    // runs at midnight UTC every day
+    // update scheduler to filter by societyId
     @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
     public void markOverdueBills() {
+        // without societyId filter — marks overdue across all societies
         List<MaintenanceBill> overdue = billRepository
-                .findByStatusAndDueDateBefore(BillStatus.PENDING, LocalDate.now());
+                .findByStatusAndDueDateBefore(
+                        BillStatus.PENDING, LocalDate.now());
 
         if (overdue.isEmpty()) return;
 
@@ -151,4 +162,5 @@ public class MaintenanceBillService {
         billRepository.saveAll(overdue);
         log.info("Marked {} bills as OVERDUE", overdue.size());
     }
+
 }

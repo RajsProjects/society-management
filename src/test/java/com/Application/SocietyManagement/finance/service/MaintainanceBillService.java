@@ -2,18 +2,19 @@ package com.Application.SocietyManagement.finance.service;
 
 import com.Application.SocietyManagement.communication.email.event.BillGeneratedEvent;
 import com.Application.SocietyManagement.communication.email.event.PaymentSuccessEvent;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.finance.dto.CreateBillRequest;
 import com.Application.SocietyManagement.finance.dto.MaintenanceBillDto;
 import com.Application.SocietyManagement.finance.dto.PayBillRequest;
 import com.Application.SocietyManagement.finance.entity.MaintenanceBill;
 import com.Application.SocietyManagement.finance.enums.BillStatus;
 import com.Application.SocietyManagement.finance.repository.MaintenanceBillRepository;
-import com.Application.SocietyManagement.finance.service.MaintenanceBillService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +55,8 @@ class MaintenanceBillServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext.setSocietyId("test-society-id");
+
         residentUser = User.builder()
                 .email("resident@test.com")
                 .apartmentNumber("A-101")
@@ -88,13 +91,19 @@ class MaintenanceBillServiceTest {
         payRequest.setAmount(new BigDecimal("1500.00"));
     }
 
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
+    }
+
     // ── createBill tests ──
 
     @Test
     void createBill_success_returnsPendingBill() {
         when(userRepository.findById("resident123"))
                 .thenReturn(Optional.of(residentUser));
-        when(billRepository.existsByApartmentNumberAndBillingMonth("A-101", "2026-05"))
+        when(billRepository.existsByApartmentNumberAndBillingMonthAndSocietyId(
+                "A-101", "2026-05", "test-society-id"))
                 .thenReturn(false);
         when(billRepository.save(any(MaintenanceBill.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -104,7 +113,7 @@ class MaintenanceBillServiceTest {
         assertThat(result.getApartmentNumber()).isEqualTo("A-101");
         assertThat(result.getAmount()).isEqualByComparingTo("1500.00");
         assertThat(result.getStatus()).isEqualTo(BillStatus.PENDING);
-        verify(eventPublisher).publishEvent(any(BillGeneratedEvent.class)); // ← add this
+        verify(eventPublisher).publishEvent(any(BillGeneratedEvent.class));
     }
 
     @Test
@@ -135,7 +144,8 @@ class MaintenanceBillServiceTest {
     void createBill_duplicateBillingMonth_throwsConflict() {
         when(userRepository.findById("resident123"))
                 .thenReturn(Optional.of(residentUser));
-        when(billRepository.existsByApartmentNumberAndBillingMonth("A-101", "2026-05"))
+        when(billRepository.existsByApartmentNumberAndBillingMonthAndSocietyId(
+                "A-101", "2026-05", "test-society-id"))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> billService.createBill(createRequest))
@@ -150,55 +160,75 @@ class MaintenanceBillServiceTest {
     @Test
     void getBills_adminNoFilter_returnsAllBills() {
         Page<MaintenanceBill> page = new PageImpl<>(List.of(pendingBill));
-        when(billRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(billRepository.findBySocietyId(
+                eq("test-society-id"), any(Pageable.class)))
+                .thenReturn(page);
 
         PagedResponse<MaintenanceBillDto> result =
                 billService.getBills(adminUser, null, 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(billRepository).findAll(any(Pageable.class));
+        verify(billRepository).findBySocietyId(
+                eq("test-society-id"), any(Pageable.class));
     }
 
     @Test
     void getBills_adminWithStatusFilter_filtersByStatus() {
         Page<MaintenanceBill> page = new PageImpl<>(List.of(pendingBill));
-        when(billRepository.findByStatus(eq(BillStatus.PENDING), any(Pageable.class)))
+        when(billRepository.findByStatusAndSocietyId(
+                eq(BillStatus.PENDING),
+                eq("test-society-id"),
+                any(Pageable.class)))
                 .thenReturn(page);
 
         PagedResponse<MaintenanceBillDto> result =
                 billService.getBills(adminUser, BillStatus.PENDING, 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(billRepository).findByStatus(eq(BillStatus.PENDING), any(Pageable.class));
-        verify(billRepository, never()).findAll(any(Pageable.class));
+        verify(billRepository).findByStatusAndSocietyId(
+                eq(BillStatus.PENDING),
+                eq("test-society-id"),
+                any(Pageable.class));
+        verify(billRepository, never()).findBySocietyId(any(), any());
     }
 
     @Test
     void getBills_residentNoFilter_returnsOwnBillsOnly() {
         Page<MaintenanceBill> page = new PageImpl<>(List.of(pendingBill));
-        when(billRepository.findByUserId(eq(residentUser.getId()), any(Pageable.class)))
+        when(billRepository.findByUserIdAndSocietyId(
+                eq(residentUser.getId()),
+                eq("test-society-id"),
+                any(Pageable.class)))
                 .thenReturn(page);
 
         PagedResponse<MaintenanceBillDto> result =
                 billService.getBills(residentUser, null, 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(billRepository).findByUserId(eq(residentUser.getId()), any(Pageable.class));
-        verify(billRepository, never()).findAll(any(Pageable.class));
+        verify(billRepository).findByUserIdAndSocietyId(
+                eq(residentUser.getId()),
+                eq("test-society-id"),
+                any(Pageable.class));
+        verify(billRepository, never()).findBySocietyId(any(), any());
     }
 
     @Test
     void getBills_residentWithStatusFilter_returnsOwnBillsByStatus() {
         Page<MaintenanceBill> page = new PageImpl<>(List.of(pendingBill));
-        when(billRepository.findByUserIdAndStatus(
-                eq(residentUser.getId()), eq(BillStatus.PENDING), any(Pageable.class)))
+        when(billRepository.findByUserIdAndStatusAndSocietyId(
+                eq(residentUser.getId()),
+                eq(BillStatus.PENDING),
+                eq("test-society-id"),
+                any(Pageable.class)))
                 .thenReturn(page);
 
-        PagedResponse<MaintenanceBillDto> result =
-                billService.getBills(residentUser, BillStatus.PENDING, 0, 20);
+        billService.getBills(residentUser, BillStatus.PENDING, 0, 20);
 
-        verify(billRepository).findByUserIdAndStatus(
-                eq(residentUser.getId()), eq(BillStatus.PENDING), any(Pageable.class));
+        verify(billRepository).findByUserIdAndStatusAndSocietyId(
+                eq(residentUser.getId()),
+                eq(BillStatus.PENDING),
+                eq("test-society-id"),
+                any(Pageable.class));
     }
 
     // ── payBill tests ──
@@ -208,8 +238,10 @@ class MaintenanceBillServiceTest {
         ReflectionTestUtils.setField(residentUser, "id", "resident123");
         pendingBill.setUserId("resident123");
 
-        when(billRepository.findById("bill1")).thenReturn(Optional.of(pendingBill));
-        when(billRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(billRepository.findById("bill1"))
+                .thenReturn(Optional.of(pendingBill));
+        when(billRepository.save(any()))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         var result = billService.payBill("bill1", residentUser, payRequest);
 
@@ -217,12 +249,13 @@ class MaintenanceBillServiceTest {
         assertThat(result).containsEntry("status", "PAID");
         assertThat(pendingBill.getStatus()).isEqualTo(BillStatus.PAID);
         assertThat(pendingBill.getUpiTransactionId()).isEqualTo("UPI1234567890");
-        verify(eventPublisher).publishEvent(any(PaymentSuccessEvent.class)); // ← add this
+        verify(eventPublisher).publishEvent(any(PaymentSuccessEvent.class));
     }
 
     @Test
     void payBill_billNotFound_throwsNotFound() {
-        when(billRepository.findById("nonexistent")).thenReturn(Optional.empty());
+        when(billRepository.findById("nonexistent"))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
                 billService.payBill("nonexistent", residentUser, payRequest))
@@ -233,7 +266,8 @@ class MaintenanceBillServiceTest {
     @Test
     void payBill_notOwner_throwsForbidden() {
         pendingBill.setUserId("anotherUser");
-        when(billRepository.findById("bill1")).thenReturn(Optional.of(pendingBill));
+        when(billRepository.findById("bill1"))
+                .thenReturn(Optional.of(pendingBill));
 
         assertThatThrownBy(() ->
                 billService.payBill("bill1", residentUser, payRequest))
@@ -248,7 +282,8 @@ class MaintenanceBillServiceTest {
         ReflectionTestUtils.setField(residentUser, "id", "resident123");
         pendingBill.setUserId("resident123");
         pendingBill.setStatus(BillStatus.PAID);
-        when(billRepository.findById("bill1")).thenReturn(Optional.of(pendingBill));
+        when(billRepository.findById("bill1"))
+                .thenReturn(Optional.of(pendingBill));
 
         assertThatThrownBy(() ->
                 billService.payBill("bill1", residentUser, payRequest))
@@ -263,7 +298,8 @@ class MaintenanceBillServiceTest {
         ReflectionTestUtils.setField(residentUser, "id", "resident123");
         pendingBill.setUserId("resident123");
         pendingBill.setStatus(BillStatus.OVERDUE);
-        when(billRepository.findById("bill1")).thenReturn(Optional.of(pendingBill));
+        when(billRepository.findById("bill1"))
+                .thenReturn(Optional.of(pendingBill));
 
         assertThatThrownBy(() ->
                 billService.payBill("bill1", residentUser, payRequest))
@@ -278,7 +314,8 @@ class MaintenanceBillServiceTest {
         ReflectionTestUtils.setField(residentUser, "id", "resident123");
         pendingBill.setUserId("resident123");
         payRequest.setAmount(new BigDecimal("500.00"));
-        when(billRepository.findById("bill1")).thenReturn(Optional.of(pendingBill));
+        when(billRepository.findById("bill1"))
+                .thenReturn(Optional.of(pendingBill));
 
         assertThatThrownBy(() ->
                 billService.payBill("bill1", residentUser, payRequest))
@@ -321,4 +358,5 @@ class MaintenanceBillServiceTest {
 
         verify(billRepository, never()).saveAll(any());
     }
-}
+
+} // ← this closing brace closes the class

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -44,26 +45,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String email = jwtService.extractEmail(token);
-
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
         if (userDetails != null) {
             UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()
-                    );
-
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+            auth.setDetails(new WebAuthenticationDetailsSource()
+                    .buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
+
+            // set tenant context from JWT claim
+            String societyId = jwtService.extractSocietyId(token);
+            TenantContext.setSocietyId(societyId);
         }
 
-        filterChain.doFilter(request, response);
-
-        String societyId = jwtService.extractSocietyId(token);
-        TenantContext.setSocietyId(societyId);
-
-        // make sure to clear after request
         try {
             filterChain.doFilter(request, response);
         } finally {
+            // always clear after request — prevents thread pool leaks
             TenantContext.clear();
         }
     }
