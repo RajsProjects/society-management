@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.communication.email.service;
 
 import com.Application.SocietyManagement.communication.email.event.BillGeneratedEvent;
 import com.Application.SocietyManagement.communication.email.event.PaymentSuccessEvent;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.finance.entity.MaintenanceBill;
 import com.Application.SocietyManagement.finance.enums.BillStatus;
 import com.Application.SocietyManagement.finance.repository.MaintenanceBillRepository;
@@ -58,7 +59,7 @@ public class EmailService {
         LocalDate threeDaysFromNow = LocalDate.now().plusDays(3);
 
         List<MaintenanceBill> dueSoonBills = billRepository
-                .findByStatusAndDueDate(BillStatus.PENDING, threeDaysFromNow);
+                .findByStatusAndDueDateAndSocietyId(BillStatus.PENDING, threeDaysFromNow, TenantContext.getSocietyId());
 
         dueSoonBills.forEach(bill ->
                 userRepository.findById(bill.getUserId()).ifPresent(user ->
