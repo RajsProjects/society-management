@@ -56,7 +56,6 @@ class MaintenanceBillServiceTest {
 
     @BeforeEach
     void setUp() {
-        TenantContext tenantContext = mock(TenantContext.class);
         residentUser = User.builder()
                 .email("resident@test.com")
                 .apartmentNumber("A-101")
