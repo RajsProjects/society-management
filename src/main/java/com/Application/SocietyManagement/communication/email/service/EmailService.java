@@ -53,6 +53,23 @@ public class EmailService {
 
     // ── Scheduled Notifications ──
 
+    @Async
+    public void sendInviteEmail(String to, String token, String role) {
+        try {
+            Context ctx = new Context();
+            ctx.setVariable("token", token);
+            ctx.setVariable("role", role);
+            ctx.setVariable("acceptUrl",
+                    "http://localhost:5173/accept-invite?token=" + token);
+            ctx.setVariable("expiresIn", "48 hours");
+
+            String html = templateEngine.process("email/invite", ctx);
+            sendHtmlEmail(to, "You're invited to join CivicLink", html);
+        } catch (Exception e) {
+            log.error("Failed to send invite email to {}: {}", to, e.getMessage());
+        }
+    }
+
     @Scheduled(cron = "0 0 9 * * *", zone = "UTC")
     public void sendBillReminders() {
         LocalDate threeDaysFromNow = LocalDate.now().plusDays(3);

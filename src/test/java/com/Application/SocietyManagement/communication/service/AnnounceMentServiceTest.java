@@ -5,7 +5,6 @@ import com.Application.SocietyManagement.communication.dto.AnnouncementResponse;
 import com.Application.SocietyManagement.communication.entity.Announcement;
 import com.Application.SocietyManagement.communication.enums.AnnouncementType;
 import com.Application.SocietyManagement.communication.repository.AnnouncementRepository;
-import com.Application.SocietyManagement.communication.service.AnnouncementService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
