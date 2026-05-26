@@ -1,5 +1,6 @@
 package com.Application.SocietyManagement.issue.service;
 
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.issue.dto.CreatorDto;
 import com.Application.SocietyManagement.issue.dto.IssueRequest;
 import com.Application.SocietyManagement.issue.dto.IssueResponse;
@@ -39,6 +40,7 @@ public class IssueService {
                 .description(request.getDescription())
                 .photoUrl(request.getPhotoUrl())
                 .creatorId(creatorId)
+                .societyId(TenantContext.getSocietyId()) // ← add
                 .build();
 
         return toResponse(issueRepository.save(issue));
@@ -48,6 +50,7 @@ public class IssueService {
                                                   String sortBy,
                                                   String direction,
                                                   int page, int size) {
+        String societyId = TenantContext.getSocietyId();
         Sort.Direction dir = direction.equalsIgnoreCase("asc")
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
 
@@ -55,10 +58,10 @@ public class IssueService {
                 Sort.by(dir, "createdAt"));
 
         Page<Issue> result = status != null
-                ? issueRepository.findByStatus(status, pageable)
-                : issueRepository.findAll(pageable);
+                ? issueRepository.findByStatusAndSocietyId(
+                status, societyId, pageable)
+                : issueRepository.findBySocietyId(societyId, pageable);
 
-        // use batch method for list operations
         List<IssueResponse> content = toResponseList(result.getContent());
 
         if ("voteCount".equalsIgnoreCase(sortBy)) {
