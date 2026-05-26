@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -115,39 +116,49 @@ class AnnouncementServiceTest {
     @Test
     void getAll_noFilter_returnsAllAnnouncements() {
         Page<Announcement> page = new PageImpl<>(List.of(announcement));
-        when(announcementRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(announcementRepository.findBySocietyId(
+                eq("test-society-id"), any(Pageable.class)))
+                .thenReturn(page);
 
         PagedResponse<AnnouncementResponse> result =
                 announcementService.getAll(null, 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(announcementRepository).findAll(any(Pageable.class));
-        verify(announcementRepository, never()).findByType(any(), any());
+        verify(announcementRepository).findBySocietyId(
+                eq("test-society-id"), any(Pageable.class));
+        verify(announcementRepository, never()).findByTypeAndSocietyId(
+                any(), any(), any());
     }
 
     @Test
     void getAll_withTypeFilter_callsFilteredRepository() {
         Page<Announcement> page = new PageImpl<>(List.of(announcement));
-        when(announcementRepository.findByType(
-                eq(AnnouncementType.MAINTENANCE), any(Pageable.class)))
+        when(announcementRepository.findByTypeAndSocietyId(
+                eq(AnnouncementType.MAINTENANCE),
+                eq("test-society-id"),
+                any(Pageable.class)))
                 .thenReturn(page);
 
         PagedResponse<AnnouncementResponse> result =
                 announcementService.getAll(AnnouncementType.MAINTENANCE, 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().getFirst().getType())
+        assertThat(result.getContent().get(0).getType())
                 .isEqualTo(AnnouncementType.MAINTENANCE);
-        verify(announcementRepository).findByType(
-                eq(AnnouncementType.MAINTENANCE), any(Pageable.class));
-        verify(announcementRepository, never()).findAll(any(Pageable.class));
+        verify(announcementRepository).findByTypeAndSocietyId(
+                eq(AnnouncementType.MAINTENANCE),
+                eq("test-society-id"),
+                any(Pageable.class));
+        verify(announcementRepository, never()).findBySocietyId(any(), any());
     }
 
     @Test
     void getAll_emptyResult_returnsEmptyPage() {
         Page<Announcement> emptyPage = new PageImpl<>(List.of());
-        when(announcementRepository.findAll(any(Pageable.class))).thenReturn(emptyPage);
+        when(announcementRepository.findBySocietyId(
+                eq("test-society-id"), any(Pageable.class)))
+                .thenReturn(emptyPage);
 
         PagedResponse<AnnouncementResponse> result =
                 announcementService.getAll(null, 0, 20);
@@ -160,10 +171,12 @@ class AnnouncementServiceTest {
     void getAll_paginationMetadata_isCorrect() {
         Page<Announcement> page = new PageImpl<>(
                 List.of(announcement),
-                org.springframework.data.domain.PageRequest.of(0, 20),
+                PageRequest.of(0, 20),
                 45
         );
-        when(announcementRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(announcementRepository.findBySocietyId(
+                eq("test-society-id"), any(Pageable.class)))
+                .thenReturn(page);
 
         PagedResponse<AnnouncementResponse> result =
                 announcementService.getAll(null, 0, 20);

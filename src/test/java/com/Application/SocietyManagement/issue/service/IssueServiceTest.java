@@ -119,7 +119,9 @@ class IssueServiceTest {
     @Test
     void getIssues_noFilter_returnsAll() {
         Page<Issue> page = new PageImpl<>(List.of(issue));
-        when(issueRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(issueRepository.findBySocietyId(
+                eq("test-society-id"), any(Pageable.class)))
+                .thenReturn(page);
         when(userRepository.findAllById(any())).thenReturn(List.of(creator));
         when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
@@ -127,21 +129,24 @@ class IssueServiceTest {
                 issueService.getIssues(null, "createdAt", "desc", 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(issueRepository).findAll(any(Pageable.class));
+        verify(issueRepository).findBySocietyId(
+                eq("test-society-id"), any(Pageable.class));
     }
 
     @Test
     void getIssues_filterByStatus_callsCorrectRepository() {
         Page<Issue> page = new PageImpl<>(List.of(issue));
-        when(issueRepository.findByStatus(eq(IssueStatus.OPEN), any(Pageable.class)))
+        when(issueRepository.findByStatusAndSocietyId(
+                eq(IssueStatus.OPEN), eq("test-society-id"), any(Pageable.class)))
                 .thenReturn(page);
         when(userRepository.findAllById(any())).thenReturn(List.of(creator));
         when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
         issueService.getIssues(IssueStatus.OPEN, "createdAt", "desc", 0, 20);
 
-        verify(issueRepository).findByStatus(eq(IssueStatus.OPEN), any(Pageable.class));
-        verify(issueRepository, never()).findAll(any(Pageable.class));
+        verify(issueRepository).findByStatusAndSocietyId(
+                eq(IssueStatus.OPEN), eq("test-society-id"), any(Pageable.class));
+        verify(issueRepository, never()).findBySocietyId(any(), any(Pageable.class));
     }
 
     @Test
@@ -150,7 +155,9 @@ class IssueServiceTest {
         Issue issue2 = Issue.builder().title("Issue 2").creatorId("c2").build();
 
         Page<Issue> page = new PageImpl<>(List.of(issue1, issue2));
-        when(issueRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(issueRepository.findBySocietyId(
+                eq("test-society-id"), any(Pageable.class)))
+                .thenReturn(page);
         when(userRepository.findAllById(any())).thenReturn(List.of(creator));
         when(issueVoteRepository.countByIssueId(null)).thenReturn(5L, 2L);
 
