@@ -1,5 +1,6 @@
 package com.Application.SocietyManagement.issue.service;
 
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.issue.dto.IssueRequest;
 import com.Application.SocietyManagement.issue.dto.IssueResponse;
 import com.Application.SocietyManagement.issue.entity.Issue;
@@ -14,6 +15,7 @@ import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +48,7 @@ class IssueServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext tenantContext = mock(TenantContext.class);
         creator = User.builder()
                 .email("resident@test.com")
                 .firstName("John")
@@ -63,6 +66,11 @@ class IssueServiceTest {
         issueRequest = new IssueRequest();
         issueRequest.setTitle("Broken elevator");
         issueRequest.setDescription("Elevator stuck on 3rd floor");
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     // ── createIssue tests ──

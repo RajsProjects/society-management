@@ -5,7 +5,9 @@ import com.Application.SocietyManagement.communication.dto.AnnouncementResponse;
 import com.Application.SocietyManagement.communication.entity.Announcement;
 import com.Application.SocietyManagement.communication.enums.AnnouncementType;
 import com.Application.SocietyManagement.communication.repository.AnnouncementRepository;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +40,7 @@ class AnnouncementServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext tenantContext = mock(TenantContext.class);
         announcement = Announcement.builder()
                 .title("Water Supply Interruption")
                 .content("Water will be cut from 2PM to 4PM")
@@ -49,6 +52,11 @@ class AnnouncementServiceTest {
         request.setTitle("Water Supply Interruption");
         request.setContent("Water will be cut from 2PM to 4PM");
         request.setType(AnnouncementType.MAINTENANCE);
+    }
+
+    @AfterEach
+    void tearDown () {
+        TenantContext.clear();
     }
 
     // ── create tests ──

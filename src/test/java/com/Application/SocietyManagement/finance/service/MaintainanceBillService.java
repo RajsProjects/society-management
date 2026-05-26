@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.finance.service;
 
 import com.Application.SocietyManagement.communication.email.event.BillGeneratedEvent;
 import com.Application.SocietyManagement.communication.email.event.PaymentSuccessEvent;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.finance.dto.CreateBillRequest;
 import com.Application.SocietyManagement.finance.dto.MaintenanceBillDto;
 import com.Application.SocietyManagement.finance.dto.PayBillRequest;
@@ -14,6 +15,7 @@ import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +56,7 @@ class MaintenanceBillServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext tenantContext = mock(TenantContext.class);
         residentUser = User.builder()
                 .email("resident@test.com")
                 .apartmentNumber("A-101")
@@ -86,6 +89,11 @@ class MaintenanceBillServiceTest {
         payRequest = new PayBillRequest();
         payRequest.setUpiTransactionId("UPI1234567890");
         payRequest.setAmount(new BigDecimal("1500.00"));
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     // ── createBill tests ──
