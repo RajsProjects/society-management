@@ -5,6 +5,7 @@ import com.Application.SocietyManagement.communication.dto.AnnouncementResponse;
 import com.Application.SocietyManagement.communication.entity.Announcement;
 import com.Application.SocietyManagement.communication.enums.AnnouncementType;
 import com.Application.SocietyManagement.communication.repository.AnnouncementRepository;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,25 +22,31 @@ public class AnnouncementService {
 
     private final AnnouncementRepository announcementRepository;
 
-    public AnnouncementResponse create(AnnouncementRequest request, String authorId) {
+    public AnnouncementResponse create(AnnouncementRequest request,
+                                       String authorId) {
         Announcement announcement = Announcement.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
                 .type(request.getType())
                 .authorId(authorId)
+                .societyId(TenantContext.getSocietyId()) // ← add
                 .build();
 
-        return AnnouncementResponse.from(announcementRepository.save(announcement));
+        return AnnouncementResponse.from(
+                announcementRepository.save(announcement));
     }
 
     public PagedResponse<AnnouncementResponse> getAll(AnnouncementType type,
                                                       int page, int size) {
+        String societyId = TenantContext.getSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Announcement> result = type != null
-                ? announcementRepository.findByType(type, pageable)
-                : announcementRepository.findAll(pageable);
+                ? announcementRepository.findByTypeAndSocietyId(
+                type, societyId, pageable)
+                : announcementRepository.findBySocietyId(
+                societyId, pageable);
 
         return PagedResponse.<AnnouncementResponse>builder()
                 .content(result.getContent().stream()
@@ -51,7 +58,6 @@ public class AnnouncementService {
                 .totalPages(result.getTotalPages())
                 .build();
     }
-
     public AnnouncementResponse getById(String id) {
         return AnnouncementResponse.from(findById(id));
     }
