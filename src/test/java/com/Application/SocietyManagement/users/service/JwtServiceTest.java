@@ -75,13 +75,16 @@ class JwtServiceTest {
         }
 
         @Test
-        @DisplayName("same user produces different tokens (timestamp diff)")
-        void generateToken_sameUserTwice_producesUniqueTokens()
-                throws InterruptedException {
-            String token1 = jwtService.generateToken(residentUser);
-            Thread.sleep(10);
-            String token2 = jwtService.generateToken(residentUser);
-            assertThat(token1).isNotEqualTo(token2);
+        @DisplayName("token contains all required claims")
+        void generateToken_containsRequiredClaims() {
+            String token = jwtService.generateToken(residentUser);
+
+            assertThat(jwtService.extractEmail(token))
+                    .isEqualTo("resident@test.com");
+            assertThat(jwtService.extractRole(token))
+                    .isEqualTo("RESIDENT");
+            assertThat(jwtService.extractSocietyId(token))
+                    .isEqualTo("society-001");
         }
     }
 

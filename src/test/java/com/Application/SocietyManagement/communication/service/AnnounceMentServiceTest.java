@@ -103,7 +103,8 @@ class AnnouncementServiceTest {
             announcementService.create(request, "admin123");
 
             verify(announcementRepository).save(argThat(a ->
-                    "test-society-id".equals(a.getSocietyId())));
+                    a.getSocietyId() != null &&
+                            a.getSocietyId().equals("test-society-id")));
         }
 
         @Test
@@ -157,7 +158,7 @@ class AnnouncementServiceTest {
         }
 
         @Test
-        @DisplayName("filter by MAINTENANCE type - calls filtered repository")
+        @DisplayName("filter by MAINTENANCE type")
         void getAll_withTypeFilter_callsFilteredRepository() {
             Page<Announcement> page = new PageImpl<>(List.of(announcement));
             when(announcementRepository.findByTypeAndSocietyId(
@@ -189,7 +190,6 @@ class AnnouncementServiceTest {
                     .type(AnnouncementType.EMERGENCY)
                     .societyId("test-society-id")
                     .build();
-
             Page<Announcement> page = new PageImpl<>(List.of(emergency));
             when(announcementRepository.findByTypeAndSocietyId(
                     eq(AnnouncementType.EMERGENCY),
@@ -226,8 +226,7 @@ class AnnouncementServiceTest {
             Page<Announcement> page = new PageImpl<>(
                     List.of(announcement),
                     PageRequest.of(0, 20),
-                    45
-            );
+                    45);
             when(announcementRepository.findBySocietyId(
                     eq("test-society-id"), any(Pageable.class)))
                     .thenReturn(page);

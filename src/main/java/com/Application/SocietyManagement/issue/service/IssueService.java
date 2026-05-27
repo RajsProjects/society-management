@@ -1,5 +1,6 @@
 package com.Application.SocietyManagement.issue.service;
 
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.issue.dto.CreatorDto;
 import com.Application.SocietyManagement.issue.dto.IssueRequest;
 import com.Application.SocietyManagement.issue.dto.IssueResponse;
@@ -39,6 +40,7 @@ public class IssueService {
                 .description(request.getDescription())
                 .photoUrl(request.getPhotoUrl())
                 .creatorId(creatorId)
+                .societyId(TenantContext.getSocietyId()) // ← add
                 .build();
 
         return toResponse(issueRepository.save(issue));
@@ -48,6 +50,7 @@ public class IssueService {
                                                   String sortBy,
                                                   String direction,
                                                   int page, int size) {
+        String societyId = TenantContext.getSocietyId(); // ← add
         Sort.Direction dir = direction.equalsIgnoreCase("asc")
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
 
@@ -55,10 +58,11 @@ public class IssueService {
                 Sort.by(dir, "createdAt"));
 
         Page<Issue> result = status != null
-                ? issueRepository.findByStatus(status, pageable)
-                : issueRepository.findAll(pageable);
+                ? issueRepository.findByStatusAndSocietyId(
+                status, societyId, pageable)  // ← fix
+                : issueRepository.findBySocietyId(
+                societyId, pageable);          // ← fix
 
-        // use batch method for list operations
         List<IssueResponse> content = toResponseList(result.getContent());
 
         if ("voteCount".equalsIgnoreCase(sortBy)) {
@@ -123,9 +127,9 @@ public class IssueService {
                         HttpStatus.NOT_FOUND, "Issue not found"));
     }
 
-    // single issue response - for create/update operations
     private IssueResponse toResponse(Issue issue) {
-        User creator = userRepository.findById(issue.getCreatorId()).orElse(null);
+        User creator = userRepository.findById(
+                issue.getCreatorId()).orElse(null);
         CreatorDto creatorDto = creator != null
                 ? CreatorDto.builder()
                   .id(creator.getId())
@@ -148,7 +152,6 @@ public class IssueService {
                 .build();
     }
 
-    // batch response - for list operations (optimized - fewer DB calls)
     private List<IssueResponse> toResponseList(List<Issue> issues) {
         if (issues.isEmpty()) return List.of();
 

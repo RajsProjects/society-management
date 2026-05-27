@@ -22,17 +22,19 @@ import java.util.List;
 public class UserService {
     private final UserRepository userRepository;
 
-    public UserSummarydto updateStatus(String userId, Status newStatus) {
+    public UserSummarydto updateStatus(String userId, Status status) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
-        if (user.getRole() == Roles.ADMIN) {
+        // block modification of any admin-level roles
+        if (user.getRole() == Roles.ADMIN ||
+                user.getRole() == Roles.SUPER_ADMIN) {
             throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN, "Cannot modify another admin's status");
+                    HttpStatus.FORBIDDEN, "Cannot modify another admin");
         }
 
-        user.setStatus(newStatus);
+        user.setStatus(status);
         return UserSummarydto.from(userRepository.save(user));
     }
 

@@ -46,6 +46,8 @@ class IssueServiceTest {
 
     @BeforeEach
     void setUp() {
+        // ← remove: TenantContext tenantContext = mock(TenantContext.class);
+        // ← add this instead:
         TenantContext.setSocietyId("test-society-id");
 
         creator = User.builder()
@@ -139,7 +141,8 @@ class IssueServiceTest {
             issueService.createIssue(issueRequest, "creator123");
 
             verify(issueRepository).save(argThat(i ->
-                    "test-society-id".equals(i.getSocietyId())));
+                    i.getSocietyId() != null &&
+                            i.getSocietyId().equals("test-society-id")));
         }
 
         @Test
@@ -205,7 +208,7 @@ class IssueServiceTest {
         }
 
         @Test
-        @DisplayName("sort by voteCount descending - sorts correctly")
+        @DisplayName("sort by voteCount descending")
         void getIssues_sortByVoteCount_sortsDescending() {
             Issue issue1 = Issue.builder()
                     .title("Issue 1").creatorId("c1")
@@ -251,7 +254,6 @@ class IssueServiceTest {
 
             issueService.getIssues(null, "createdAt", "desc", 0, 20);
 
-            // verify single batch call not per-issue call
             verify(userRepository, times(1)).findAllById(any());
             verify(userRepository, never()).findById(any());
         }

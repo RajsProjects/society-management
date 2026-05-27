@@ -26,7 +26,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("UserService")
 class UserServiceTest {
 
-    @Mock private UserRepository userRepository;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private UserService userService;
@@ -92,12 +93,15 @@ class UserServiceTest {
         void updateStatus_pendingToActive_approvesResident() {
             when(userRepository.findById("user1"))
                     .thenReturn(Optional.of(residentUser));
+
             when(userRepository.save(any(User.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            UserSummarydto result = userService.updateStatus("user1", Status.ACTIVE);
+            UserSummarydto result =
+                    userService.updateStatus("user1", Status.ACTIVE);
 
             assertThat(result.getStatus()).isEqualTo(Status.ACTIVE);
+
             verify(userRepository).save(argThat(u ->
                     u.getStatus() == Status.ACTIVE));
         }
@@ -106,12 +110,15 @@ class UserServiceTest {
         @DisplayName("ACTIVE to INACTIVE - deactivates resident successfully")
         void updateStatus_activeToInactive_deactivatesResident() {
             residentUser.setStatus(Status.ACTIVE);
+
             when(userRepository.findById("user1"))
                     .thenReturn(Optional.of(residentUser));
+
             when(userRepository.save(any(User.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            UserSummarydto result = userService.updateStatus("user1", Status.INACTIVE);
+            UserSummarydto result =
+                    userService.updateStatus("user1", Status.INACTIVE);
 
             assertThat(result.getStatus()).isEqualTo(Status.INACTIVE);
         }
@@ -120,12 +127,15 @@ class UserServiceTest {
         @DisplayName("ACTIVE to BLOCKED - blocks resident")
         void updateStatus_activeToBlocked_blocksResident() {
             residentUser.setStatus(Status.ACTIVE);
+
             when(userRepository.findById("user1"))
                     .thenReturn(Optional.of(residentUser));
+
             when(userRepository.save(any(User.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            UserSummarydto result = userService.updateStatus("user1", Status.BLOCKED);
+            UserSummarydto result =
+                    userService.updateStatus("user1", Status.BLOCKED);
 
             assertThat(result.getStatus()).isEqualTo(Status.BLOCKED);
         }
@@ -140,9 +150,14 @@ class UserServiceTest {
                     userService.updateStatus("nonexistent", Status.ACTIVE))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> {
-                        ResponseStatusException e = (ResponseStatusException) ex;
-                        assertThat(e.getStatusCode().value()).isEqualTo(404);
-                        assertThat(e.getMessage()).contains("User not found");
+                        ResponseStatusException e =
+                                (ResponseStatusException) ex;
+
+                        assertThat(e.getStatusCode().value())
+                                .isEqualTo(404);
+
+                        assertThat(e.getMessage())
+                                .contains("User not found");
                     });
         }
 
@@ -156,9 +171,14 @@ class UserServiceTest {
                     userService.updateStatus("adminId", Status.INACTIVE))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> {
-                        ResponseStatusException e = (ResponseStatusException) ex;
-                        assertThat(e.getStatusCode().value()).isEqualTo(403);
-                        assertThat(e.getMessage()).contains("Cannot modify another admin");
+                        ResponseStatusException e =
+                                (ResponseStatusException) ex;
+
+                        assertThat(e.getStatusCode().value())
+                                .isEqualTo(403);
+
+                        assertThat(e.getMessage())
+                                .contains("Cannot modify another admin");
                     });
 
             verify(userRepository, never()).save(any());
@@ -167,19 +187,33 @@ class UserServiceTest {
         @Test
         @DisplayName("modifying SUPER_ADMIN - throws 403 FORBIDDEN")
         void updateStatus_superAdminUser_throwsForbidden() {
+
             User superAdmin = User.builder()
+                    .email("superadmin@test.com")
+                    .firstName("Super")
+                    .lastName("Admin")
                     .role(Roles.SUPER_ADMIN)
                     .status(Status.ACTIVE)
+                    .societyId("test-society-id")
                     .build();
+
             when(userRepository.findById("superAdminId"))
                     .thenReturn(Optional.of(superAdmin));
 
             assertThatThrownBy(() ->
-                    userService.updateStatus("superAdminId", Status.INACTIVE))
+                    userService.updateStatus(
+                            "superAdminId",
+                            Status.INACTIVE))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> {
-                        ResponseStatusException e = (ResponseStatusException) ex;
-                        assertThat(e.getStatusCode().value()).isEqualTo(403);
+                        ResponseStatusException e =
+                                (ResponseStatusException) ex;
+
+                        assertThat(e.getStatusCode().value())
+                                .isEqualTo(403);
+
+                        assertThat(e.getMessage())
+                                .contains("Cannot modify another admin");
                     });
 
             verify(userRepository, never()).save(any());
@@ -193,9 +227,12 @@ class UserServiceTest {
         @Test
         @DisplayName("no filters - returns all users")
         void getUsers_noFilters_returnsAllUsers() {
-            Page<User> page = new PageImpl<>(
-                    List.of(residentUser, adminUser));
-            when(userRepository.findAll(any(Pageable.class))).thenReturn(page);
+
+            Page<User> page =
+                    new PageImpl<>(List.of(residentUser, adminUser));
+
+            when(userRepository.findAll(any(Pageable.class)))
+                    .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
                     userService.getUsers(0, 20, null, null);
@@ -207,64 +244,107 @@ class UserServiceTest {
         @Test
         @DisplayName("filter by PENDING status - calls findByStatus")
         void getUsers_filterByStatus_callsCorrectRepository() {
-            Page<User> page = new PageImpl<>(List.of(residentUser));
+
+            Page<User> page =
+                    new PageImpl<>(List.of(residentUser));
+
             when(userRepository.findByStatus(
-                    eq(Status.PENDING), any(Pageable.class)))
+                    eq(Status.PENDING),
+                    any(Pageable.class)))
                     .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
-                    userService.getUsers(0, 20, Status.PENDING, null);
+                    userService.getUsers(
+                            0,
+                            20,
+                            Status.PENDING,
+                            null);
 
             assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().getFirst().getStatus())
+
+            assertThat(result.getContent()
+                    .getFirst()
+                    .getStatus())
                     .isEqualTo(Status.PENDING);
+
             verify(userRepository).findByStatus(
-                    eq(Status.PENDING), any(Pageable.class));
-            verify(userRepository, never()).findAll(any(Pageable.class));
+                    eq(Status.PENDING),
+                    any(Pageable.class));
+
+            verify(userRepository, never())
+                    .findAll(any(Pageable.class));
         }
 
         @Test
         @DisplayName("filter by RESIDENT role - calls findByRole")
         void getUsers_filterByRole_callsCorrectRepository() {
-            Page<User> page = new PageImpl<>(List.of(residentUser));
+
+            Page<User> page =
+                    new PageImpl<>(List.of(residentUser));
+
             when(userRepository.findByRole(
-                    eq(Roles.RESIDENT), any(Pageable.class)))
+                    eq(Roles.RESIDENT),
+                    any(Pageable.class)))
                     .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
-                    userService.getUsers(0, 20, null, Roles.RESIDENT);
+                    userService.getUsers(
+                            0,
+                            20,
+                            null,
+                            Roles.RESIDENT);
 
             assertThat(result.getContent()).hasSize(1);
+
             verify(userRepository).findByRole(
-                    eq(Roles.RESIDENT), any(Pageable.class));
+                    eq(Roles.RESIDENT),
+                    any(Pageable.class));
         }
 
         @Test
         @DisplayName("filter by ACCOUNTANT role - returns accountants")
         void getUsers_filterByAccountantRole_returnsAccountants() {
-            Page<User> page = new PageImpl<>(List.of(accountantUser));
+
+            Page<User> page =
+                    new PageImpl<>(List.of(accountantUser));
+
             when(userRepository.findByRole(
-                    eq(Roles.ACCOUNTANT), any(Pageable.class)))
+                    eq(Roles.ACCOUNTANT),
+                    any(Pageable.class)))
                     .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
-                    userService.getUsers(0, 20, null, Roles.ACCOUNTANT);
+                    userService.getUsers(
+                            0,
+                            20,
+                            null,
+                            Roles.ACCOUNTANT);
 
             assertThat(result.getContent()).hasSize(1);
+
             verify(userRepository).findByRole(
-                    eq(Roles.ACCOUNTANT), any(Pageable.class));
+                    eq(Roles.ACCOUNTANT),
+                    any(Pageable.class));
         }
 
         @Test
         @DisplayName("filter by SECURITY role - returns security guards")
         void getUsers_filterBySecurityRole_returnsSecurityGuards() {
-            Page<User> page = new PageImpl<>(List.of(securityUser));
+
+            Page<User> page =
+                    new PageImpl<>(List.of(securityUser));
+
             when(userRepository.findByRole(
-                    eq(Roles.SECURITY), any(Pageable.class)))
+                    eq(Roles.SECURITY),
+                    any(Pageable.class)))
                     .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
-                    userService.getUsers(0, 20, null, Roles.SECURITY);
+                    userService.getUsers(
+                            0,
+                            20,
+                            null,
+                            Roles.SECURITY);
 
             assertThat(result.getContent()).hasSize(1);
         }
@@ -272,23 +352,38 @@ class UserServiceTest {
         @Test
         @DisplayName("filter by status AND role - calls findByStatusAndRole")
         void getUsers_filterByStatusAndRole_callsCorrectRepository() {
-            Page<User> page = new PageImpl<>(List.of(residentUser));
+
+            Page<User> page =
+                    new PageImpl<>(List.of(residentUser));
+
             when(userRepository.findByStatusAndRole(
-                    eq(Status.PENDING), eq(Roles.RESIDENT), any(Pageable.class)))
+                    eq(Status.PENDING),
+                    eq(Roles.RESIDENT),
+                    any(Pageable.class)))
                     .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
-                    userService.getUsers(0, 20, Status.PENDING, Roles.RESIDENT);
+                    userService.getUsers(
+                            0,
+                            20,
+                            Status.PENDING,
+                            Roles.RESIDENT);
 
             assertThat(result.getContent()).hasSize(1);
+
             verify(userRepository).findByStatusAndRole(
-                    eq(Status.PENDING), eq(Roles.RESIDENT), any(Pageable.class));
+                    eq(Status.PENDING),
+                    eq(Roles.RESIDENT),
+                    any(Pageable.class));
         }
 
         @Test
         @DisplayName("empty result - returns empty page")
         void getUsers_emptyResult_returnsEmptyPage() {
-            Page<User> emptyPage = new PageImpl<>(List.of());
+
+            Page<User> emptyPage =
+                    new PageImpl<>(List.of());
+
             when(userRepository.findAll(any(Pageable.class)))
                     .thenReturn(emptyPage);
 
@@ -302,13 +397,20 @@ class UserServiceTest {
         @Test
         @DisplayName("pagination metadata - correct page info")
         void getUsers_paginationMetadata_isCorrect() {
+
             Page<User> page = new PageImpl<>(
                     List.of(residentUser),
-                    PageRequest.of(0, 20,
-                            Sort.by(Sort.Direction.DESC, "createdAt")),
+                    PageRequest.of(
+                            0,
+                            20,
+                            Sort.by(
+                                    Sort.Direction.DESC,
+                                    "createdAt")),
                     50
             );
-            when(userRepository.findAll(any(Pageable.class))).thenReturn(page);
+
+            when(userRepository.findAll(any(Pageable.class)))
+                    .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
                     userService.getUsers(0, 20, null, null);
@@ -322,14 +424,19 @@ class UserServiceTest {
         @Test
         @DisplayName("password hash never exposed in response")
         void getUsers_passwordHashNeverExposedInResponse() {
-            Page<User> page = new PageImpl<>(List.of(residentUser));
-            when(userRepository.findAll(any(Pageable.class))).thenReturn(page);
+
+            Page<User> page =
+                    new PageImpl<>(List.of(residentUser));
+
+            when(userRepository.findAll(any(Pageable.class)))
+                    .thenReturn(page);
 
             PagedResponse<UserSummarydto> result =
                     userService.getUsers(0, 20, null, null);
 
             result.getContent().forEach(dto ->
-                    assertThat(dto).doesNotHaveToString("password"));
+                    assertThat(dto)
+                            .doesNotHaveToString("password"));
         }
     }
 }

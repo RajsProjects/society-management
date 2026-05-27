@@ -64,6 +64,11 @@ public class AuthService {
                     HttpStatus.FORBIDDEN, "Account is inactive");
         }
 
+        if (user.getStatus() == Status.BLOCKED) { // ← add this
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Account has been blocked");
+        }
+
         String token = jwtService.generateToken(user);
 
         return AuthResponse.builder()
