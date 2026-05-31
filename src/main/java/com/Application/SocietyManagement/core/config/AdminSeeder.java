@@ -1,48 +1,56 @@
 package com.Application.SocietyManagement.core.config;
 
+import com.Application.SocietyManagement.society.entity.Society;
+import com.Application.SocietyManagement.society.repository.SocietyRepository;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.CommandLineRunner;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
 
-@Component
+@Slf4j
+@Configuration
 @RequiredArgsConstructor
-public class AdminSeeder implements CommandLineRunner {
+public class AdminSeeder {
 
     private final UserRepository userRepository;
+    private final SocietyRepository societyRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public void run(String... args) {
+    @Bean
+    public ApplicationRunner seedAdmin() {
+        return args -> {
+            if (societyRepository.count() == 0) {
+                Society society = Society.builder()
+                        .name("Default Society")
+                        .societyCode("DEFAULT")
+                        .address("123 Main Street")
+                        .adminEmail("admin@society.com")
+                        .build();
+                Society saved = societyRepository.save(society);
+                log.info("Default society created: {}", saved.getId());
 
-        boolean adminExists = userRepository.existsByRole(Roles.ADMIN);
-
-        if (!adminExists) {
-
-            String email = System.getenv("ADMIN_EMAIL");
-            String password = System.getenv("ADMIN_PASSWORD");
-
-            if (email == null || password == null) {
-                throw new RuntimeException("ADMIN_EMAIL or ADMIN_PASSWORD not set in environment");
+                if (!userRepository.existsByRole(Roles.ADMIN)) {
+                    User admin = User.builder()
+                            .email("admin@society.com")
+                            .passwordHash(passwordEncoder
+                                    .encode("admin123"))
+                            .firstName("Super")
+                            .lastName("Admin")
+                            .role(Roles.ADMIN)
+                            .status(Status.ACTIVE)
+                            .societyId(saved.getId())
+                            .build();
+                    userRepository.save(admin);
+                    log.info("Default admin created: admin@society.com");
+                }
             }
-
-            User admin = User.builder()
-                    .email("admin@society.com")
-                    .passwordHash(passwordEncoder.encode("admin123"))
-                    .firstName("Admin")
-                    .lastName("User")
-                    .role(Roles.ADMIN)
-                    .status(Status.ACTIVE)
-                    .societyId("default") 
-                    .build();
-
-            userRepository.save(admin);
-
-            System.out.println("✅ Default ADMIN created");
-        }
+        };
     }
 }

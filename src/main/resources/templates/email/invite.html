@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; padding: 32px; }
+        .header { background-color: #3525cd; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .btn { background-color: #3525cd; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 20px; font-weight: bold; }
+        .footer { text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 24px; }
+    </style>
+    <title></title>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏘️ CivicLink</h1>
+        <p>You've been invited!</p>
+    </div>
+    <div style="padding: 24px 0;">
+        <p>You have been invited to join as a <strong th:text="${role}">RESIDENT</strong>.</p>
+        <p>Click the button below to accept your invite and create your account. This link expires in <strong th:text="${expiresIn}">48 hours</strong>.</p>
+        <div style="text-align: center;">
+            <a class="btn" th:href="${acceptUrl}">Accept Invite</a>
+        </div>
+        <p style="margin-top: 20px; color: #6B7280; font-size: 13px;">
+            Or copy this token: <code th:text="${token}">token</code>
+        </p>
+    </div>
+    <div class="footer">
+        <p>If you didn't expect this invite, you can ignore this email.</p>
+    </div>
+</div>
+</body>
+</html>
