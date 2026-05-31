@@ -20,4 +20,6 @@ public interface MaintenanceBillRepository extends MongoRepository<MaintenanceBi
     List<MaintenanceBill> findByStatusAndDueDate(BillStatus status, LocalDate dueDate);
     Page<MaintenanceBill> findBySocietyId(String societyId, Pageable pageable);
     Page<MaintenanceBill> findByUserIdAndSocietyId(String userId, String societyId, Pageable pageable);
+    long countBySocietyId(String societyId);
+    long countBySocietyIdAndStatus(String societyId, BillStatus status);
 }

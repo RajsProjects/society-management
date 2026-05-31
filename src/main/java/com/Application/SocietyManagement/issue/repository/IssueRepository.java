@@ -10,4 +10,5 @@ public interface IssueRepository extends MongoRepository<Issue, String> {
     Page<Issue> findBySocietyId(String societyId, Pageable pageable);
     Page<Issue> findByStatusAndSocietyId(
             IssueStatus status, String societyId, Pageable pageable);
+    long countBySocietyIdAndStatus(String societyId, IssueStatus status);
 }
