@@ -1,9 +1,11 @@
 package com.Application.SocietyManagement.core.config;
 
 import com.Application.SocietyManagement.core.security.JwtAuthenticationFilter;
+import com.Application.SocietyManagement.core.security.RateLimitingFilter;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.apache.catalina.filters.RateLimitFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,6 +29,7 @@ public class SecurityConfig {
     // NO JwtAuthenticationFilter field here
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtService jwtService;
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -57,6 +60,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/api-docs/**",
+                                "/v3/api-docs/**",
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/actuator/info"
@@ -64,8 +68,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .userDetailsService(customUserDetailsService)
+                .addFilterBefore(rateLimitingFilter,
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(
-                        jwtAuthenticationFilter(), // ← call the method, not the field
+                        jwtAuthenticationFilter(),
                         UsernamePasswordAuthenticationFilter.class
                 );
 
