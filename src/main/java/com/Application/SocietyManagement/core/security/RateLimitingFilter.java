@@ -33,37 +33,42 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // only rate limit auth endpoints
         if (!path.startsWith("/api/v1/auth/")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String ip = getClientIp(request);
-        String key = "rate_limit:" + ip + ":" + path;
+        try {
+            String ip = extractClientIp(request);
+            String key = "rate_limit:" + ip + ":" + path;
 
-        String countStr = redisTemplate.opsForValue().get(key);
-        int count = countStr != null ? Integer.parseInt(countStr) : 0;
+            String countStr = redisTemplate.opsForValue().get(key);
+            int count = countStr != null ? Integer.parseInt(countStr) : 0;
 
-        if (count >= MAX_REQUESTS) {
-            log.warn("Rate limit exceeded for IP: {} on path: {}", ip, path);
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"error\": \"Too many requests. Please try again later.\"}");
-            return;
-        }
+            if (count >= MAX_REQUESTS) {
+                log.warn("Rate limit exceeded for IP: {} on path: {}", ip, path);
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"error\": \"Too many requests. Please try again later.\"}");
+                return;
+            }
 
-        if (count == 0) {
-            redisTemplate.opsForValue().set(key, "1", WINDOW);
-        } else {
-            redisTemplate.opsForValue().increment(key);
+            if (count == 0) {
+                redisTemplate.opsForValue().set(key, "1", WINDOW);
+            } else {
+                redisTemplate.opsForValue().increment(key);
+            }
+
+        } catch (Exception e) {
+            // Redis unavailable — allow request, log warning
+            log.warn("Rate limiting unavailable: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private String getClientIp(HttpServletRequest request) {
+    private String extractClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isEmpty()) {
             return forwarded.split(",")[0].trim();
