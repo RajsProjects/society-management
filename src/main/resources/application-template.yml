@@ -1,24 +1,47 @@
 server:
   port: 8080
+  tomcat:
+    threads:
+      max: 200
+    accept-count: 50
 
 jwt:
-  secret: YOUR_JWT_SECRET_HERE_MIN_32_CHARS
-  expiration: 86400000
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://user:pass@cluster.mongodb.net/Society_DB?retryWrites=true&w=majority&connectTimeoutMS=10000&socketTimeoutMS=10000&maxPoolSize=50&minPoolSize=5
+      uri: ${MONGODB_URI}
+      auto-index-creation: true
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_APP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        connectiontimeout: 5000
+        timeout: 5000
+        writetimeout: 5000
+
   jackson:
     serialization:
       write-dates-as-timestamps: false
     mapper:
       accept-case-insensitive-enums: true
-    mail:
-      host: smtp.gmail.com
-      port: 587
-      username: YOUR_GMAIL_ADDRESS
-      password: YOUR_GMAIL_APP_PASSWORD
 
 springdoc:
   api-docs:
@@ -31,12 +54,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics
+        include: health, info, metrics, prometheus
   endpoint:
     health:
       probes:
         enabled: true
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
 logging:
   level:
