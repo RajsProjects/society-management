@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: society-management-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_APP_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        value: "society-redis"
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        value: ""
+
+  - type: redis
+    name: society-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
