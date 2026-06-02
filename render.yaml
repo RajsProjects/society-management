@@ -17,20 +17,11 @@ services:
       - key: MAIL_APP_PASSWORD
         sync: false
       - key: REDIS_HOST
-        fromService:
-          name: society-redis
-          type: redis
-          property: host
+        sync: false
       - key: REDIS_PORT
-        fromService:
-          name: society-redis
-          type: redis
-          property: port
+        value: "6379"
       - key: REDIS_PASSWORD
-        fromService:
-          name: society-redis
-          type: redis
-          property: password
+        value: ""
 
   - type: redis
     name: society-redis
