@@ -1,0 +1,69 @@
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200
+    accept-count: 50
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
+
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+      auto-index-creation: true
+  redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+  mongo:
+    connection-pool:
+      max-size: 50
+      min-size: 5
+      max-wait-time: 2000
+      max-connection-idle-time: 30000
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_APP_PASSWORD}
+    properties:
+       mail:
+         smtp:
+           auth: true
+           starttls:
+             enable: true
+             required: true
+         connectiontimeout: 5000
+         timeout: 5000
+         writetimeout: 5000
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.security: WARN
