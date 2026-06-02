@@ -5,34 +5,34 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /actuator/health
-
     envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: MONGODB_URI
         sync: false
-
       - key: JWT_SECRET
         sync: false
-
-      - key: JWT_EXPIRATION
-        value: "86400000"
-
       - key: MAIL_USERNAME
         sync: false
-
       - key: MAIL_APP_PASSWORD
         sync: false
-
       - key: REDIS_HOST
-        value: society-redis
-
+        fromService:
+          name: society-redis
+          type: redis
+          property: host
       - key: REDIS_PORT
-        value: "6379"
-
+        fromService:
+          name: society-redis
+          type: redis
+          property: port
       - key: REDIS_PASSWORD
-        value: ""
+        fromService:
+          name: society-redis
+          type: redis
+          property: password
 
   - type: redis
     name: society-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
