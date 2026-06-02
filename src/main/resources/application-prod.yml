@@ -29,11 +29,6 @@ spring:
             enable: true
             required: true
 
-  jackson:
-    write-dates-as-timestamps: false
-    mapper:
-      accept-case-insensitive-enums: true
-
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
