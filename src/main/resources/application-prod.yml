@@ -31,7 +31,7 @@ spring:
 
   jackson:
     write-dates-as-timestamps: false
-    deserialization:
+    mapper:
       accept-case-insensitive-enums: true
 
   thymeleaf:
