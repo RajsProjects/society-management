@@ -28,5 +28,5 @@ public class SignupRequest {
     private String lastName;
 
     @NotBlank(message = "Apartment number is required")
-    private String apartmentNumber;
+    private String flatId;
 }

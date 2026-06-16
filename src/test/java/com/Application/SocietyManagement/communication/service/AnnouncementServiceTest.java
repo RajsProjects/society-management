@@ -170,7 +170,7 @@ class AnnouncementServiceTest {
                     announcementService.getAll(AnnouncementType.MAINTENANCE, 0, 20);
 
             assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().get(0).getType())
+            assertThat(result.getContent().getFirst().getType())
                     .isEqualTo(AnnouncementType.MAINTENANCE);
             verify(announcementRepository).findByTypeAndSocietyId(
                     eq(AnnouncementType.MAINTENANCE),
@@ -201,7 +201,7 @@ class AnnouncementServiceTest {
                     announcementService.getAll(AnnouncementType.EMERGENCY, 0, 20);
 
             assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().get(0).getType())
+            assertThat(result.getContent().getFirst().getType())
                     .isEqualTo(AnnouncementType.EMERGENCY);
         }
 

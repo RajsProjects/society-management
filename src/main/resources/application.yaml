@@ -67,3 +67,32 @@ management:
 logging:
   level:
     org.springframework.security: WARN
+
+aws:
+  region: ap-south-1
+  access-key: ${AWS_ACCESS_KEY_ID:dummy}
+  secret-key: ${AWS_SECRET_ACCESS_KEY:dummy}
+  s3:
+    bucket: civiclink-documents-dev
+    presigned-url-expiry: 3600
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:rzp_test_dummy}
+  key-secret: ${RAZORPAY_KEY_SECRET:dummy}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:dummy}
+  currency: INR
+  plans:
+    basic:
+      amount: 99900
+      flats-limit: 50
+    growth:
+      amount: 249900
+      flats-limit: 200
+    scale:
+      amount: 499900
+      flats-limit: 500
+
+platform:
+  trial-days: 14
+  join-code-prefix: SOC
+  support-email: support@civiclink.in

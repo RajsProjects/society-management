@@ -50,7 +50,7 @@ class AuthServiceTest {
         signupRequest.setPassword("password123");
         signupRequest.setFirstName("John");
         signupRequest.setLastName("Doe");
-        signupRequest.setApartmentNumber("A-101");
+        signupRequest.setFlatId("A-101");
 
         loginRequest = new LoginRequest();
         loginRequest.setEmail("resident@test.com");
@@ -171,7 +171,7 @@ class AuthServiceTest {
             authService.signup(signupRequest);
 
             verify(userRepository).save(argThat(user ->
-                    user.getApartmentNumber().equals("A-101")));
+                    user.getFlatId().equals("A-101")));
         }
 
         @Test
