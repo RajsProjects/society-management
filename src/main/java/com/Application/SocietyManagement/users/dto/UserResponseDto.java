@@ -27,7 +27,7 @@ public class UserResponseDto {
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .apartmentNumber(user.getApartmentNumber())
+                .apartmentNumber(user.getFlatId())
                 .role(user.getRole())
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())

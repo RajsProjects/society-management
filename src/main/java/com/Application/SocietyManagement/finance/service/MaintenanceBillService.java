@@ -40,7 +40,7 @@ public class MaintenanceBillService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
-        if (!user.getApartmentNumber().equals(request.getApartmentNumber())) {
+        if (!user.getFlatId().equals(request.getApartmentNumber())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Apartment number does not match user");
         }

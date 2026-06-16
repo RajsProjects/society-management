@@ -35,7 +35,7 @@ public class ComplaintService {
                 .residentId(currentUser.getId())
                 .residentName(currentUser.getFirstName()
                         + " " + currentUser.getLastName())
-                .apartmentNumber(currentUser.getApartmentNumber())
+                .apartmentNumber(currentUser.getFlatId())
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .category(request.getCategory())
