@@ -32,7 +32,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .flatId(request.getFlatId())
+                .apartmentNumber(request.getApartmentNumber())
                 .role(Roles.RESIDENT)
                 .status(Status.PENDING)
                 .build();

@@ -44,7 +44,7 @@ class UserServiceTest {
                 .email("resident@test.com")
                 .firstName("John")
                 .lastName("Doe")
-                .flatId("A-101")
+                .apartmentNumber("A-101")
                 .role(Roles.RESIDENT)
                 .status(Status.PENDING)
                 .societyId("test-society-id")

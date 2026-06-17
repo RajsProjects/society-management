@@ -56,7 +56,7 @@ class MaintenanceBillServiceTest {
     void setUp() {
         residentUser = User.builder()
                 .email("resident@test.com")
-                .flatId("A-101")
+                .apartmentNumber("A-101")
                 .role(Roles.RESIDENT)
                 .status(Status.ACTIVE)
                 .build();
@@ -120,7 +120,7 @@ class MaintenanceBillServiceTest {
 
     @Test
     void createBill_apartmentMismatch_throwsBadRequest() {
-        residentUser.setFlatId("B-202");
+        residentUser.setApartmentNumber("B-202");
         when(userRepository.findById("resident123"))
                 .thenReturn(Optional.of(residentUser));
 

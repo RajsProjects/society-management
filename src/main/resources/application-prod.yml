@@ -59,35 +59,3 @@ logging:
   level:
     root: INFO
     com.Application.SocietyManagement: INFO
-
-# AWS
-aws:
-  region: ap-south-1
-  access-key: ${AWS_ACCESS_KEY_ID}
-  secret-key: ${AWS_SECRET_ACCESS_KEY}
-  s3:
-    bucket: civiclink-documents
-    presigned-url-expiry: 3600  # 1 hour
-
-# Razorpay
-razorpay:
-  key-id: ${RAZORPAY_KEY_ID}
-  key-secret: ${RAZORPAY_KEY_SECRET}
-  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
-  currency: INR
-  plans:
-    basic:
-      amount: 99900      # ₹999 in paise
-      flats-limit: 50
-    growth:
-      amount: 249900     # ₹2499 in paise
-      flats-limit: 200
-    scale:
-      amount: 499900     # ₹4999 in paise
-      flats-limit: 500
-
-# Platform
-platform:
-  trial-days: 14
-  join-code-prefix: SOC
-  support-email: support@civiclink.in

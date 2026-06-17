@@ -27,7 +27,7 @@ public class UserSummarydto {
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .apartmentNumber(user.getFlatId())
+                .apartmentNumber(user.getApartmentNumber())
                 .role(user.getRole())
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())
