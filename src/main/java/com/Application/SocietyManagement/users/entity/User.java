@@ -5,13 +5,13 @@ import com.Application.SocietyManagement.users.enums.PlatformRole;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import lombok.*;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -21,7 +21,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User extends BaseEntity {
+public class User extends BaseEntity implements UserDetails {
     private String societyId;
     private String email;
     private String phone;                 // required
@@ -42,5 +42,39 @@ public class User extends BaseEntity {
     private String fcmToken;              // Android push notifications
 
 
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        // society role
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        // platform role
+        if (platformRole == PlatformRole.PLATFORM_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"));
+        }
+        return authorities;
+    }
 
+    @Override
+    public String getPassword() {
+        return "";
+    }
+
+    @Override
+    public String getUsername() {
+        return "";
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return status != Status.INACTIVE && status != Status.BLOCKED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return status == Status.ACTIVE; }
 }
