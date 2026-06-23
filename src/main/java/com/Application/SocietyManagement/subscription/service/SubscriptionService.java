@@ -128,4 +128,26 @@ public class SubscriptionService {
         society.setSubscriptionEndsAt(endDate);
         societyRepository.save(society);
     }
+
+    public OrderResponse changePlan(SubscriptionPlan newPlan) {
+        String societyId = TenantContext.getSocietyId();
+        Society society = societyRepository.findById(societyId)
+                .orElseThrow(() -> new RuntimeException("Society not found"));
+
+        if (society.getPlan() == newPlan) {
+            throw new IllegalArgumentException("Society is already on the " + newPlan + " plan");
+        }
+        if (newPlan == SubscriptionPlan.TRIAL) {
+            throw new IllegalArgumentException("Cannot switch to TRIAL plan");
+        }
+        if (society.getSubscriptionStatus() == SubscriptionStatus.CANCELLED
+                || society.getSubscriptionStatus() == SubscriptionStatus.TRIAL) {
+            throw new IllegalArgumentException("Cannot change plan from current subscription status: "
+                    + society.getSubscriptionStatus());
+        }
+
+        // Reuse existing order creation — webhook/verify will call activateSubscription()
+        // which already updates Society.plan, so no extra logic needed here
+        return createOrder(newPlan);
+    }
 }
