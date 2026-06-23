@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.core.config;
 
 import com.Application.SocietyManagement.core.security.JwtAuthenticationFilter;
 import com.Application.SocietyManagement.core.security.RateLimitingFilter;
+import com.Application.SocietyManagement.core.security.SubscriptionEnforcementFilter;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtService jwtService;
     private final RateLimitingFilter rateLimitingFilter;
+    private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -75,6 +77,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/societies/register").permitAll()
+                        .requestMatchers("/api/v1/webhooks/**").permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -93,7 +96,8 @@ public class SecurityConfig {
                 .addFilterBefore(
                         jwtAuthenticationFilter(),
                         UsernamePasswordAuthenticationFilter.class
-                );
+                )
+                .addFilterAfter(subscriptionEnforcementFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
