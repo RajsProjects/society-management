@@ -26,4 +26,9 @@ public class SubscriptionController {
         subscriptionService.verifyPayment(request);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/change-plan")
+    public ResponseEntity<OrderResponse> changePlan(@Valid @RequestBody CreateOrderRequest request) {
+        return ResponseEntity.ok(subscriptionService.changePlan(request.getPlan()));
+    }
 }
