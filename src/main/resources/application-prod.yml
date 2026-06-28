@@ -91,3 +91,6 @@ platform:
   trial-days: 14
   join-code-prefix: SOC
   support-email: support@civiclink.in
+  admin:
+    email: ${PLATFORM_ADMIN_EMAIL}
+    password: ${PLATFORM_ADMIN_PASSWORD}
