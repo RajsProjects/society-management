@@ -1,12 +1,14 @@
 package com.Application.SocietyManagement.core.config;
 
 import com.Application.SocietyManagement.core.security.JwtAuthenticationFilter;
+import com.Application.SocietyManagement.core.security.PepperedPasswordEncoder;
 import com.Application.SocietyManagement.core.security.RateLimitingFilter;
 import com.Application.SocietyManagement.core.security.SubscriptionEnforcementFilter;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.apache.catalina.filters.RateLimitFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -39,9 +41,12 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
 
+    @Value("${security.pepper}")
+    private String pepper;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new PepperedPasswordEncoder(pepper);
     }
 
     @Bean

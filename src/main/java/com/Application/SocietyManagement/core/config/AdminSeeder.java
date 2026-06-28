@@ -11,6 +11,7 @@ import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,10 +29,16 @@ public class AdminSeeder {
     private final SocietyRepository societyRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${platform.admin.email}")
+    private String adminEmail;
+
+    @Value("${platform.admin.password}")
+    private String adminPassword;
+
     @Bean
     public ApplicationRunner seedAdmin() {
         return args -> {
-            if (userRepository.existsByEmail("admin@society.com")) {
+            if (userRepository.existsByEmail(adminEmail)) {
                 log.info("Platform admin already exists, skipping seed");
                 return;
             }
@@ -48,14 +55,14 @@ public class AdminSeeder {
                     .subscriptionStatus(SubscriptionStatus.ACTIVE)
                     .subscriptionEndsAt(Instant.now().plus(3650, ChronoUnit.DAYS))
                     .societyCode("PLATFORM")
-                    .adminEmail("admin@society.com")
+                    .adminEmail(adminEmail)
                     .build();
             Society saved = societyRepository.save(society);
             log.info("Platform society created: {}", saved.getId());
 
             User admin = User.builder()
-                    .email("admin@society.com")
-                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .email(adminEmail)
+                    .passwordHash(passwordEncoder.encode(adminPassword))
                     .firstName("Platform")
                     .lastName("Admin")
                     .role(Roles.SUPER_ADMIN)
@@ -64,7 +71,7 @@ public class AdminSeeder {
                     .societyId(saved.getId())
                     .build();
             userRepository.save(admin);
-            log.info("Platform admin created: admin@society.com / admin123");
+            log.info("Platform admin seeded: {}", adminEmail);
         };
     }
 }
