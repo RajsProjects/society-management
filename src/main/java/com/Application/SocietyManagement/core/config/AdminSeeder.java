@@ -43,22 +43,26 @@ public class AdminSeeder {
                 return;
             }
 
-            Society society = Society.builder()
-                    .name("CivicLink Platform")
-                    .registrationNumber("PLATFORM-001")
-                    .address("123 Main Street")
-                    .city("Jaipur")
-                    .state("Rajasthan")
-                    .pincode("302001")
-                    .totalFlats(0)
-                    .status(SocietyStatus.ACTIVE)
-                    .subscriptionStatus(SubscriptionStatus.ACTIVE)
-                    .subscriptionEndsAt(Instant.now().plus(3650, ChronoUnit.DAYS))
-                    .societyCode("PLATFORM")
-                    .adminEmail(adminEmail)
-                    .build();
-            Society saved = societyRepository.save(society);
-            log.info("Platform society created: {}", saved.getId());
+            Society saved = societyRepository.findByRegistrationNumber("PLATFORM-001")
+                    .orElseGet(() -> {
+                        Society society = Society.builder()
+                                .name("CivicLink Platform")
+                                .registrationNumber("PLATFORM-001")
+                                .address("123 Main Street")
+                                .city("Jaipur")
+                                .state("Rajasthan")
+                                .pincode("302001")
+                                .totalFlats(0)
+                                .status(SocietyStatus.ACTIVE)
+                                .subscriptionStatus(SubscriptionStatus.ACTIVE)
+                                .subscriptionEndsAt(Instant.now().plus(3650, ChronoUnit.DAYS))
+                                .societyCode("PLATFORM")
+                                .adminEmail(adminEmail)
+                                .build();
+                        Society s = societyRepository.save(society);
+                        log.info("Platform society created: {}", s.getId());
+                        return s;
+                    });
 
             User admin = User.builder()
                     .email(adminEmail)
