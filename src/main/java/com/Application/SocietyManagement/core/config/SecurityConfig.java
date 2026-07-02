@@ -7,7 +7,6 @@ import com.Application.SocietyManagement.core.security.SubscriptionEnforcementFi
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.filters.RateLimitFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +16,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -81,16 +79,18 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/societies/join/**").permitAll()
                         .requestMatchers("/api/v1/societies/register").permitAll()
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
                         .requestMatchers(
-                                "/swagger-ui.html",
+                                "/api/v1/auth/**",
+                                "/api/v1/societies/join/**",
+                                "/api/v1/societies/register",
+                                "/api/v1/webhooks/**",
                                 "/swagger-ui/**",
-                                "/api-docs/**",
+                                "/swagger-ui.html",
                                 "/v3/api-docs/**",
-                                "/actuator/health",
-                                "/actuator/health/**",
-                                "/actuator/info"
+                                "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
