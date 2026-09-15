@@ -44,3 +44,7 @@ Client → REST Controller → Service → Repository → MongoDB Atlas
 - **Role-based access** — ADMIN and RESIDENT roles enforced at method level
 - **Approval workflow** — new residents start as PENDING, admin approves
 - **Modular packages** — each module is self-contained (controller, dto, entity, repository, service)
+
+## Interview preparation
+
+For a structured, project-specific learning path, memory model, folder architecture, system-design walkthrough, and interview questions, see [docs/interview-prep/README.md](interview-prep/README.md).
