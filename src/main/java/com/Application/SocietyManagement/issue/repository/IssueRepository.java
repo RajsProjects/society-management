@@ -5,10 +5,12 @@ import com.Application.SocietyManagement.issue.enums.IssueStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import java.util.Optional;
 
 public interface IssueRepository extends MongoRepository<Issue, String> {
     Page<Issue> findBySocietyId(String societyId, Pageable pageable);
     Page<Issue> findByStatusAndSocietyId(
             IssueStatus status, String societyId, Pageable pageable);
     long countBySocietyIdAndStatus(String societyId, IssueStatus status);
+    Optional<Issue> findByIdAndSocietyId(String id, String societyId);
 }

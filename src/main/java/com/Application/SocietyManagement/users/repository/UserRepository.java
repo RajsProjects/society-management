@@ -16,6 +16,11 @@ public interface UserRepository extends MongoRepository<User, String> {
     Page<User> findByStatus(Status status, Pageable pageable);
     Page<User> findByRole(Roles role, Pageable pageable);
     Page<User> findByStatusAndRole(Status status, Roles role, Pageable pageable);
+    Page<User> findBySocietyId(String societyId, Pageable pageable);
+    Page<User> findBySocietyIdAndStatus(String societyId, Status status, Pageable pageable);
+    Page<User> findBySocietyIdAndRole(String societyId, Roles role, Pageable pageable);
+    Page<User> findBySocietyIdAndStatusAndRole(String societyId, Status status, Roles role, Pageable pageable);
+    Optional<User> findByIdAndSocietyId(String id, String societyId);
     long countBySocietyIdAndRole(String societyId, Roles role);
     long countBySocietyIdAndStatus(String societyId, Status status);
 }

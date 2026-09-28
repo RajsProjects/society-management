@@ -116,6 +116,7 @@ public class ComplaintService {
                                           UpdateComplaintRequest request,
                                           User currentUser) {
         Complaint complaint = findComplaint(complaintId);
+        validateAccess(complaint, currentUser);
 
         ComplaintStatus oldStatus = complaint.getStatus();
         complaint.setStatus(request.getStatus());
@@ -170,7 +171,11 @@ public class ComplaintService {
     }
 
     private Complaint findComplaint(String complaintId) {
-        return complaintRepository.findById(complaintId)
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return complaintRepository.findByIdAndSocietyId(complaintId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Complaint not found"));
     }
@@ -179,8 +184,8 @@ public class ComplaintService {
         boolean isAdmin = currentUser.getRole() == Roles.ADMIN
                 || currentUser.getRole() == Roles.SUPER_ADMIN;
 
-        if (!isAdmin && !complaint.getResidentId()
-                .equals(currentUser.getId())) {
+        if (!complaint.getSocietyId().equals(TenantContext.getSocietyId())
+                || (!isAdmin && !complaint.getResidentId().equals(currentUser.getId()))) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "Access denied");
         }
