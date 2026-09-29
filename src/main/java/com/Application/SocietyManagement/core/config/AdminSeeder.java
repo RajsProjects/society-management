@@ -38,10 +38,8 @@ public class AdminSeeder {
     @Bean
     public ApplicationRunner seedAdmin() {
         return args -> {
-            if (userRepository.existsByEmail(adminEmail)) {
-                log.info("Platform admin already exists, skipping seed");
-                return;
-            }
+            String cleanEmail = adminEmail != null ? adminEmail.replaceAll("^\"|\"$", "").trim() : "";
+            String cleanPassword = adminPassword != null ? adminPassword.replaceAll("^\"|\"$", "").trim() : "";
 
             Society saved = societyRepository.findByRegistrationNumber("PLATFORM-001")
                     .orElseGet(() -> {
@@ -57,25 +55,37 @@ public class AdminSeeder {
                                 .subscriptionStatus(SubscriptionStatus.ACTIVE)
                                 .subscriptionEndsAt(Instant.now().plus(3650, ChronoUnit.DAYS))
                                 .societyCode("PLATFORM")
-                                .adminEmail(adminEmail)
+                                .adminEmail(cleanEmail)
                                 .build();
                         Society s = societyRepository.save(society);
                         log.info("Platform society created: {}", s.getId());
                         return s;
                     });
 
-            User admin = User.builder()
-                    .email(adminEmail)
-                    .passwordHash(passwordEncoder.encode(adminPassword))
-                    .firstName("Platform")
-                    .lastName("Admin")
-                    .role(Roles.SUPER_ADMIN)
-                    .platformRole(PlatformRole.PLATFORM_ADMIN)
-                    .status(Status.ACTIVE)
-                    .societyId(saved.getId())
-                    .build();
-            userRepository.save(admin);
-            log.info("Platform admin seeded: {}", adminEmail);
+            userRepository.findByEmail(cleanEmail).ifPresentOrElse(existingAdmin -> {
+                existingAdmin.setPasswordHash(passwordEncoder.encode(cleanPassword));
+                existingAdmin.setRole(Roles.SUPER_ADMIN);
+                existingAdmin.setPlatformRole(PlatformRole.PLATFORM_ADMIN);
+                existingAdmin.setStatus(Status.ACTIVE);
+                if (existingAdmin.getSocietyId() == null || existingAdmin.getSocietyId().isBlank()) {
+                    existingAdmin.setSocietyId(saved.getId());
+                }
+                userRepository.save(existingAdmin);
+                log.info("Platform admin credentials updated/synced for: {}", cleanEmail);
+            }, () -> {
+                User admin = User.builder()
+                        .email(cleanEmail)
+                        .passwordHash(passwordEncoder.encode(cleanPassword))
+                        .firstName("Platform")
+                        .lastName("Admin")
+                        .role(Roles.SUPER_ADMIN)
+                        .platformRole(PlatformRole.PLATFORM_ADMIN)
+                        .status(Status.ACTIVE)
+                        .societyId(saved.getId())
+                        .build();
+                userRepository.save(admin);
+                log.info("Platform admin seeded: {}", cleanEmail);
+            });
         };
     }
 }

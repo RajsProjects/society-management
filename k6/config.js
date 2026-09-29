@@ -1,13 +1,13 @@
 export const BASE_URL = 'http://localhost:8080/api/v1';
 
 export const ADMIN_CREDENTIALS = {
-    email: 'admin@society.com',
-    password: 'admin123'
+    email: __ENV.ADMIN_EMAIL || 'admin@society.com',
+    password: __ENV.ADMIN_PASSWORD || 'ChangeMe123!'
 };
 
 export const TEST_RESIDENT = {
     email: `resident_${Date.now()}@test.com`,
-    password: 'password123',
+    password: __ENV.TEST_RESIDENT_PASSWORD || 'ChangeMe123!',
     firstName: 'Test',
     lastName: 'Resident',
     apartmentNumber: 'A-101'

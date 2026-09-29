@@ -6,6 +6,9 @@ import com.Application.SocietyManagement.users.dto.SignupRequest;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
+import com.Application.SocietyManagement.society.entity.Society;
+import com.Application.SocietyManagement.society.repository.SocietyRepository;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,11 +23,23 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final SocietyRepository societyRepository;
 
     public AuthResponse signup(SignupRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Email already registered");
+        }
+
+        String resolvedSocietyId = null;
+        if (request.getSocietyId() != null && !request.getSocietyId().isBlank()) {
+            resolvedSocietyId = request.getSocietyId();
+        } else if (request.getJoinCode() != null && !request.getJoinCode().isBlank() && societyRepository != null) {
+            resolvedSocietyId = societyRepository.findByJoinCode(request.getJoinCode())
+                    .map(Society::getId)
+                    .orElse(null);
+        } else if (TenantContext.getSocietyId() != null && !TenantContext.getSocietyId().isBlank()) {
+            resolvedSocietyId = TenantContext.getSocietyId();
         }
 
         User user = User.builder()
@@ -33,6 +48,7 @@ public class AuthService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .flatId(request.getFlatId())
+                .societyId(resolvedSocietyId)
                 .role(Roles.RESIDENT)
                 .status(Status.PENDING)
                 .build();

@@ -17,7 +17,9 @@ import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -44,7 +46,7 @@ public class SubscriptionService {
     public OrderResponse createOrder(SubscriptionPlan plan) {
         String societyId = TenantContext.getSocietyId();
         Society society = societyRepository.findById(societyId)
-                .orElseThrow(() -> new RuntimeException("Society not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Society not found"));
 
         long amount = planPricingConfig.getAmountFor(plan);
 
@@ -77,7 +79,7 @@ public class SubscriptionService {
                     .build();
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create Razorpay order: " + e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to create Razorpay order: " + e.getMessage(), e);
         }
     }
 
@@ -85,7 +87,7 @@ public class SubscriptionService {
         String societyId = requireSocietyId();
         Subscription subscription = subscriptionRepository.findByRazorpayOrderIdAndSocietyId(
                         request.getRazorpayOrderId(), societyId)
-                .orElseThrow(() -> new RuntimeException("Subscription order not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Subscription order not found"));
 
         JSONObject options = new JSONObject();
         options.put("razorpay_order_id", request.getRazorpayOrderId());
@@ -103,7 +105,7 @@ public class SubscriptionService {
             subscription.setPaymentStatus(PaymentStatus.FAILED);
             subscription.setFailureReason("Signature verification failed");
             subscriptionRepository.save(subscription);
-            throw new RuntimeException("Payment verification failed");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment verification failed");
         }
 
         activateSubscription(subscription, request.getRazorpayPaymentId(), request.getRazorpaySignature());
@@ -127,7 +129,7 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
 
         Society society = societyRepository.findById(subscription.getSocietyId())
-                .orElseThrow(() -> new RuntimeException("Society not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Society not found"));
         society.setPlan(subscription.getPlan());
         society.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
         society.setSubscriptionEndsAt(endDate);
@@ -137,7 +139,7 @@ public class SubscriptionService {
     public OrderResponse changePlan(SubscriptionPlan newPlan) {
         String societyId = requireSocietyId();
         Society society = societyRepository.findById(societyId)
-                .orElseThrow(() -> new RuntimeException("Society not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Society not found"));
 
         if (society.getPlan() == newPlan) {
             throw new IllegalArgumentException("Society is already on the " + newPlan + " plan");
