@@ -249,7 +249,7 @@ class AnnouncementServiceTest {
         @Test
         @DisplayName("found - returns correct response")
         void getById_found_returnsResponse() {
-            when(announcementRepository.findById("ann1"))
+            when(announcementRepository.findByIdAndSocietyId("ann1", "test-society-id"))
                     .thenReturn(Optional.of(announcement));
 
             AnnouncementResponse response =
@@ -264,7 +264,7 @@ class AnnouncementServiceTest {
         @Test
         @DisplayName("not found - throws 404")
         void getById_notFound_throwsNotFound() {
-            when(announcementRepository.findById("nonexistent"))
+            when(announcementRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
@@ -290,7 +290,7 @@ class AnnouncementServiceTest {
             updateRequest.setContent("Updated content");
             updateRequest.setType(AnnouncementType.GENERAL);
 
-            when(announcementRepository.findById("ann1"))
+            when(announcementRepository.findByIdAndSocietyId("ann1", "test-society-id"))
                     .thenReturn(Optional.of(announcement));
             when(announcementRepository.save(any(Announcement.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -306,7 +306,7 @@ class AnnouncementServiceTest {
         @Test
         @DisplayName("not found - throws 404")
         void update_notFound_throwsNotFound() {
-            when(announcementRepository.findById("nonexistent"))
+            when(announcementRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
@@ -328,7 +328,7 @@ class AnnouncementServiceTest {
             updateRequest.setContent("New Content");
             updateRequest.setType(AnnouncementType.EMERGENCY);
 
-            when(announcementRepository.findById("ann1"))
+            when(announcementRepository.findByIdAndSocietyId("ann1", "test-society-id"))
                     .thenReturn(Optional.of(announcement));
             when(announcementRepository.save(any()))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -350,7 +350,7 @@ class AnnouncementServiceTest {
         @Test
         @DisplayName("success - deletes announcement")
         void delete_success_deletesAnnouncement() {
-            when(announcementRepository.findById("ann1"))
+            when(announcementRepository.findByIdAndSocietyId("ann1", "test-society-id"))
                     .thenReturn(Optional.of(announcement));
 
             announcementService.delete("ann1");
@@ -361,7 +361,7 @@ class AnnouncementServiceTest {
         @Test
         @DisplayName("not found - throws 404")
         void delete_notFound_throwsNotFound() {
-            when(announcementRepository.findById("nonexistent"))
+            when(announcementRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
