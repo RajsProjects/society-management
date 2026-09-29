@@ -264,7 +264,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("OPEN to IN_PROGRESS - updates successfully")
         void updateStatus_openToInProgress_updatesSuccessfully() {
-            when(issueRepository.findById("issue1"))
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
                     .thenReturn(Optional.of(issue));
             when(issueRepository.save(any()))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -281,7 +281,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("OPEN to RESOLVED - updates successfully")
         void updateStatus_openToResolved_updatesSuccessfully() {
-            when(issueRepository.findById("issue1"))
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
                     .thenReturn(Optional.of(issue));
             when(issueRepository.save(any()))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -298,7 +298,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("not found - throws 404")
         void updateStatus_issueNotFound_throwsNotFound() {
-            when(issueRepository.findById("nonexistent"))
+            when(issueRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
@@ -319,7 +319,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("LOW to HIGH - updates successfully")
         void updatePriority_lowToHigh_updatesSuccessfully() {
-            when(issueRepository.findById("issue1"))
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
                     .thenReturn(Optional.of(issue));
             when(issueRepository.save(any()))
                     .thenAnswer(inv -> inv.getArgument(0));
@@ -336,7 +336,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("not found - throws 404")
         void updatePriority_issueNotFound_throwsNotFound() {
-            when(issueRepository.findById("nonexistent"))
+            when(issueRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
@@ -358,7 +358,7 @@ class IssueServiceTest {
         @DisplayName("success - saves vote")
         void addVote_success_savesVote() {
             issue.setCreatorId("creator123");
-            when(issueRepository.findById("issue1"))
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
                     .thenReturn(Optional.of(issue));
             when(issueVoteRepository.existsByIssueIdAndUserId(
                     "issue1", "voter456"))
@@ -375,7 +375,7 @@ class IssueServiceTest {
         @DisplayName("own issue - throws 400 BAD REQUEST")
         void addVote_ownIssue_throwsBadRequest() {
             issue.setCreatorId("creator123");
-            when(issueRepository.findById("issue1"))
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
                     .thenReturn(Optional.of(issue));
 
             assertThatThrownBy(() ->
@@ -395,7 +395,7 @@ class IssueServiceTest {
         @DisplayName("already voted - throws 409 CONFLICT")
         void addVote_alreadyVoted_throwsConflict() {
             issue.setCreatorId("creator123");
-            when(issueRepository.findById("issue1"))
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
                     .thenReturn(Optional.of(issue));
             when(issueVoteRepository.existsByIssueIdAndUserId(
                     "issue1", "voter456"))
@@ -417,7 +417,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("issue not found - throws 404")
         void addVote_issueNotFound_throwsNotFound() {
-            when(issueRepository.findById("nonexistent"))
+            when(issueRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->

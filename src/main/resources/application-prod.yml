@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:${SERVER_PORT:8081}}
 
 jwt:
   secret: ${JWT_SECRET}
