@@ -5,13 +5,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -52,6 +55,46 @@ public class GlobalExceptionHandler {
         log.warn("Invalid parameter value '{}' for field '{}'", ex.getValue(), ex.getName());
         return ResponseEntity.badRequest().body(error(400,
                 "Invalid value: " + ex.getValue(), request));
+    }
+
+    // 400 - malformed JSON or unreadable request body / invalid body enum
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request) {
+        String msg = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        log.warn("Malformed JSON request at {}: {}", request.getRequestURI(), msg);
+        return ResponseEntity.badRequest().body(error(400,
+                "Malformed JSON request: " + msg, request));
+    }
+
+    // 400 - missing required header
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(
+            MissingRequestHeaderException ex,
+            HttpServletRequest request) {
+        log.warn("Missing required header '{}' at {}", ex.getHeaderName(), request.getRequestURI());
+        return ResponseEntity.badRequest().body(error(400,
+                "Required header missing: " + ex.getHeaderName(), request));
+    }
+
+    // 400 - illegal argument exception
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request) {
+        log.warn("Illegal argument at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest().body(error(400, ex.getMessage(), request));
+    }
+
+    // 404 - no resource found (static route or non-existent endpoint)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(
+            NoResourceFoundException ex,
+            HttpServletRequest request) {
+        log.warn("Resource not found at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error(404,
+                "Endpoint not found: " + request.getRequestURI(), request));
     }
 
     // 403 - access denied (Spring Security)
