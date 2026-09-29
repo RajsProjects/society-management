@@ -78,7 +78,11 @@ public class AnnouncementService {
     }
 
     private Announcement findById(String id) {
-        return announcementRepository.findById(id)
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return announcementRepository.findByIdAndSocietyId(id, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Announcement not found"));
     }

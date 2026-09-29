@@ -35,6 +35,9 @@ public class SubscriptionService {
     @Value("${razorpay.key-id}")
     private String keyId;
 
+    @Value("${razorpay.key-secret}")
+    private String keySecret;
+
     @Value("${razorpay.webhook-secret}")
     private String webhookSecret;
 
@@ -79,7 +82,9 @@ public class SubscriptionService {
     }
 
     public void verifyPayment(VerifyPaymentRequest request) {
-        Subscription subscription = subscriptionRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
+        String societyId = requireSocietyId();
+        Subscription subscription = subscriptionRepository.findByRazorpayOrderIdAndSocietyId(
+                        request.getRazorpayOrderId(), societyId)
                 .orElseThrow(() -> new RuntimeException("Subscription order not found"));
 
         JSONObject options = new JSONObject();
@@ -89,7 +94,7 @@ public class SubscriptionService {
 
         boolean isValid;
         try {
-            isValid = Utils.verifyPaymentSignature(options, webhookSecret);
+            isValid = Utils.verifyPaymentSignature(options, keySecret);
         } catch (Exception e) {
             isValid = false;
         }
@@ -130,7 +135,7 @@ public class SubscriptionService {
     }
 
     public OrderResponse changePlan(SubscriptionPlan newPlan) {
-        String societyId = TenantContext.getSocietyId();
+        String societyId = requireSocietyId();
         Society society = societyRepository.findById(societyId)
                 .orElseThrow(() -> new RuntimeException("Society not found"));
 
@@ -149,5 +154,13 @@ public class SubscriptionService {
         // Reuse existing order creation — webhook/verify will call activateSubscription()
         // which already updates Society.plan, so no extra logic needed here
         return createOrder(newPlan);
+    }
+
+    private String requireSocietyId() {
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new IllegalStateException("No society context");
+        }
+        return societyId;
     }
 }

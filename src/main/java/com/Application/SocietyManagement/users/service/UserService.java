@@ -3,6 +3,7 @@ package com.Application.SocietyManagement.users.service;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.dto.UserResponseDto;
 import com.Application.SocietyManagement.users.dto.UserSummarydto;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
@@ -23,7 +24,8 @@ public class UserService {
     private final UserRepository userRepository;
 
     public UserSummarydto updateStatus(String userId, Status status) {
-        User user = userRepository.findById(userId)
+        String societyId = requireSocietyId();
+        User user = userRepository.findByIdAndSocietyId(userId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
@@ -39,19 +41,20 @@ public class UserService {
 
     public PagedResponse<UserSummarydto> getUsers(int page, int size,
                                                   Status status, Roles role) {
+        String societyId = requireSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<User> result;
 
         if (status != null && role != null) {
-            result = userRepository.findByStatusAndRole(status, role, pageable);
+            result = userRepository.findBySocietyIdAndStatusAndRole(societyId, status, role, pageable);
         } else if (status != null) {
-            result = userRepository.findByStatus(status, pageable);
+            result = userRepository.findBySocietyIdAndStatus(societyId, status, pageable);
         } else if (role != null) {
-            result = userRepository.findByRole(role, pageable);
+            result = userRepository.findBySocietyIdAndRole(societyId, role, pageable);
         } else {
-            result = userRepository.findAll(pageable);
+            result = userRepository.findBySocietyId(societyId, pageable);
         }
 
         return PagedResponse.<UserSummarydto>builder()
@@ -70,6 +73,14 @@ public class UserService {
                 .stream()
                 .map(UserResponseDto::from)
                 .toList();
+    }
+
+    private String requireSocietyId() {
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return societyId;
     }
 
     public UserResponseDto getUserByEmail(String email) {

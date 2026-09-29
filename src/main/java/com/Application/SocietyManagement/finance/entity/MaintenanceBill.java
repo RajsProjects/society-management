@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 
 @Document(collection = "maintenance_bills")
-@CompoundIndex(def = "{'apartmentNumber': 1, 'billingMonth': 1}", unique = true)
+@CompoundIndex(def = "{'societyId': 1, 'apartmentNumber': 1, 'billingMonth': 1}", unique = true)
 @Builder
 @Getter
 @Setter

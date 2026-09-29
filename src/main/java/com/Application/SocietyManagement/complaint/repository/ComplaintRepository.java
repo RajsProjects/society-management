@@ -6,6 +6,7 @@ import com.Application.SocietyManagement.complaint.enums.ComplaintStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import java.util.Optional;
 
 public interface ComplaintRepository
         extends MongoRepository<Complaint, String> {
@@ -32,4 +33,5 @@ public interface ComplaintRepository
 
     long countBySocietyId(String societyId);
     long countBySocietyIdAndStatus(String societyId, ComplaintStatus status);
+    Optional<Complaint> findByIdAndSocietyId(String id, String societyId);
 }

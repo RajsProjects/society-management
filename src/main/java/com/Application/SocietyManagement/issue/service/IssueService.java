@@ -122,7 +122,11 @@ public class IssueService {
     }
 
     private Issue findIssueById(String issueId) {
-        return issueRepository.findById(issueId)
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return issueRepository.findByIdAndSocietyId(issueId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Issue not found"));
     }

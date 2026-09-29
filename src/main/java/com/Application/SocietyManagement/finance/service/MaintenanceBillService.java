@@ -10,6 +10,7 @@ import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.repository.UserRepository;
+import com.Application.SocietyManagement.core.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -36,7 +37,8 @@ public class MaintenanceBillService {
     private final ApplicationEventPublisher eventPublisher; // ← add this
 
     public MaintenanceBillDto createBill(CreateBillRequest request) {
-        User user = userRepository.findById(request.getUserId())
+        String societyId = requireSocietyId();
+        User user = userRepository.findByIdAndSocietyId(request.getUserId(), societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
@@ -45,8 +47,8 @@ public class MaintenanceBillService {
                     HttpStatus.BAD_REQUEST, "Apartment number does not match user");
         }
 
-        if (billRepository.existsByApartmentNumberAndBillingMonth(
-                request.getApartmentNumber(), request.getBillingMonth())) {
+        if (billRepository.existsByApartmentNumberAndBillingMonthAndSocietyId(
+                request.getApartmentNumber(), request.getBillingMonth(), societyId)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Bill already exists for this billing month");
         }
@@ -57,6 +59,7 @@ public class MaintenanceBillService {
                 .amount(request.getAmount())
                 .billingMonth(request.getBillingMonth())
                 .dueDate(request.getDueDate())
+                .societyId(societyId)
                 .build();
 
         MaintenanceBill saved = billRepository.save(bill);
@@ -70,6 +73,7 @@ public class MaintenanceBillService {
     public PagedResponse<MaintenanceBillDto> getBills(User currentUser,
                                                       BillStatus status,
                                                       int page, int size) {
+        String societyId = requireSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -77,14 +81,15 @@ public class MaintenanceBillService {
         boolean isAdmin = currentUser.getRole() == Roles.ADMIN;
 
         if (isAdmin && status != null) {
-            result = billRepository.findByStatus(status, pageable);
+            result = billRepository.findByStatusAndSocietyId(status, societyId, pageable);
         } else if (isAdmin) {
-            result = billRepository.findAll(pageable);
+            result = billRepository.findBySocietyId(societyId, pageable);
         } else if (status != null) {
-            result = billRepository.findByUserIdAndStatus(
-                    currentUser.getId(), status, pageable);
+            result = billRepository.findByUserIdAndStatusAndSocietyId(
+                    currentUser.getId(), status, societyId, pageable);
         } else {
-            result = billRepository.findByUserId(currentUser.getId(), pageable);
+            result = billRepository.findByUserIdAndSocietyId(
+                    currentUser.getId(), societyId, pageable);
         }
 
         return PagedResponse.<MaintenanceBillDto>builder()
@@ -100,7 +105,7 @@ public class MaintenanceBillService {
 
     public Map<String, String> payBill(String billId, User currentUser,
                                        PayBillRequest request) {
-        MaintenanceBill bill = billRepository.findById(billId)
+        MaintenanceBill bill = billRepository.findByIdAndSocietyId(billId, requireSocietyId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Bill not found"));
 
@@ -150,5 +155,13 @@ public class MaintenanceBillService {
         overdue.forEach(bill -> bill.setStatus(BillStatus.OVERDUE));
         billRepository.saveAll(overdue);
         log.info("Marked {} bills as OVERDUE", overdue.size());
+    }
+
+    private String requireSocietyId() {
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return societyId;
     }
 }
