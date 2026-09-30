@@ -62,6 +62,18 @@ public class IssueController {
                 issueService.getIssues(status, sortBy, direction, page, size));
     }
 
+    @Operation(summary = "Get issue by ID", description = "Retrieves issue details with creator info and vote count.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Issue retrieved"),
+            @ApiResponse(responseCode = "404", description = "Issue not found")
+    })
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT')")
+    public ResponseEntity<IssueResponse> getIssueById(
+            @Parameter(description = "Issue ID") @PathVariable String id) {
+        return ResponseEntity.ok(issueService.getIssueById(id));
+    }
+
     @Operation(summary = "Update issue status", description = "Updates status to OPEN, IN_PROGRESS or RESOLVED. Admin only.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Status updated"),

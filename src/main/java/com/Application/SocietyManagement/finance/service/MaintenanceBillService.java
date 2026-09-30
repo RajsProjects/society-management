@@ -42,7 +42,7 @@ public class MaintenanceBillService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
-        if (!user.getFlatId().equals(request.getApartmentNumber())) {
+        if (user.getFlatId() == null || !user.getFlatId().equals(request.getApartmentNumber())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Apartment number does not match user");
         }
@@ -101,6 +101,20 @@ public class MaintenanceBillService {
                 .totalElements(result.getTotalElements())
                 .totalPages(result.getTotalPages())
                 .build();
+    }
+
+    public MaintenanceBillDto getBillById(String billId, User currentUser) {
+        String societyId = requireSocietyId();
+        MaintenanceBill bill = billRepository.findByIdAndSocietyId(billId, societyId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Bill not found"));
+
+        boolean isAdmin = currentUser.getRole() == Roles.ADMIN || currentUser.getRole() == Roles.SUPER_ADMIN;
+        if (!isAdmin && !bill.getUserId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        return MaintenanceBillDto.from(bill);
     }
 
     public Map<String, String> payBill(String billId, User currentUser,

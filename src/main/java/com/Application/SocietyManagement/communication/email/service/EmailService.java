@@ -29,11 +29,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-        name = "spring.mail.username",
-        havingValue = "",
-        matchIfMissing = false
-)
 public class EmailService {
 
     @Autowired(required = false)    
@@ -43,7 +38,7 @@ public class EmailService {
     private final MaintenanceBillRepository billRepository;
     private final UserRepository userRepository;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:noreply@societymanagement.com}")
     private String fromEmail;
 
     // ── Event Listeners ──
@@ -203,6 +198,10 @@ public class EmailService {
 
     private void sendHtmlEmail(String to, String subject, String html)
             throws MessagingException {
+        if (mailSender == null) {
+            log.warn("JavaMailSender is not configured; skipping email dispatch to {}", to);
+            return;
+        }
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         helper.setFrom(fromEmail);

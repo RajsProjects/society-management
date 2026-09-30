@@ -29,4 +29,8 @@ public class SignupRequest {
 
     @NotBlank(message = "Apartment number is required")
     private String flatId;
+
+    private String societyId;
+
+    private String joinCode;
 }

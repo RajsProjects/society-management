@@ -82,6 +82,10 @@ public class IssueService {
                 .build();
     }
 
+    public IssueResponse getIssueById(String issueId) {
+        return toResponse(findIssueById(issueId));
+    }
+
     public IssueResponse updateStatus(String issueId, IssueStatus status) {
         Issue issue = findIssueById(issueId);
         issue.setStatus(status);

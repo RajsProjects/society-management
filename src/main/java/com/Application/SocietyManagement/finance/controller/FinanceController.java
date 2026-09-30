@@ -65,6 +65,23 @@ public class FinanceController {
     }
 
     @Operation(
+            summary = "Get bill by ID",
+            description = "Retrieves bill details by ID. Admins can view any bill in their society; residents can only view their own."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bill retrieved"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Bill not found")
+    })
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT')")
+    public ResponseEntity<MaintenanceBillDto> getBillById(
+            @Parameter(description = "Bill ID") @PathVariable String id,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(billService.getBillById(id, currentUser));
+    }
+
+    @Operation(
             summary = "Pay bill",
             description = "Simulates a UPI payment for a bill. Resident must own the bill. Full payment only."
     )
