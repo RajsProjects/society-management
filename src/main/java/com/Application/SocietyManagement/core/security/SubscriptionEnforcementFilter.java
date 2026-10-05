@@ -4,7 +4,7 @@ import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.society.entity.Society;
 import com.Application.SocietyManagement.society.enums.SubscriptionStatus;
 import com.Application.SocietyManagement.society.repository.SocietyRepository;
-import jakarta.annotation.Nonnull;
+import org.springframework.lang.NonNull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,7 +41,9 @@ public class SubscriptionEnforcementFilter extends OncePerRequestFilter {
     );
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @Nonnull HttpServletResponse response, @Nonnull FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
         if (!WRITE_METHODS.contains(request.getMethod())) {
@@ -50,7 +52,7 @@ public class SubscriptionEnforcementFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        if (ALLOWED_PREFIXES.stream().anyMatch(path::startsWith)) {
+        if (path != null && ALLOWED_PREFIXES.stream().anyMatch(path::startsWith)) {
             filterChain.doFilter(request, response);
             return;
         }

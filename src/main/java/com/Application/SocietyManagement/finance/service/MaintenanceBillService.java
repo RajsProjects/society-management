@@ -78,7 +78,8 @@ public class MaintenanceBillService {
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<MaintenanceBill> result;
-        boolean isAdmin = currentUser.getRole() == Roles.ADMIN;
+        boolean isAdmin = currentUser.getRole() == Roles.ADMIN
+                || currentUser.getRole() == Roles.SUPER_ADMIN;
 
         if (isAdmin && status != null) {
             result = billRepository.findByStatusAndSocietyId(status, societyId, pageable);

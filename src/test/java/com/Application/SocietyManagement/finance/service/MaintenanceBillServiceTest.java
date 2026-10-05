@@ -177,6 +177,26 @@ class MaintenanceBillServiceTest {
     }
 
     @Test
+    void getBills_superAdminNoFilter_returnsAllBills() {
+        User superAdmin = User.builder()
+                .email("superadmin@test.com")
+                .role(Roles.SUPER_ADMIN)
+                .status(Status.ACTIVE)
+                .societyId(SOCIETY_ID)
+                .build();
+        ReflectionTestUtils.setField(superAdmin, "id", "superadmin123");
+
+        Page<MaintenanceBill> page = new PageImpl<>(List.of(pendingBill));
+        when(billRepository.findBySocietyId(eq(SOCIETY_ID), any(Pageable.class))).thenReturn(page);
+
+        PagedResponse<MaintenanceBillDto> result =
+                billService.getBills(superAdmin, null, 0, 20);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(billRepository, atLeastOnce()).findBySocietyId(eq(SOCIETY_ID), any(Pageable.class));
+    }
+
+    @Test
     void getBills_adminWithStatusFilter_filtersByStatus() {
         Page<MaintenanceBill> page = new PageImpl<>(List.of(pendingBill));
         when(billRepository.findByStatusAndSocietyId(eq(BillStatus.PENDING), eq(SOCIETY_ID), any(Pageable.class)))
