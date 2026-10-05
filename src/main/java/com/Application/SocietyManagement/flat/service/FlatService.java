@@ -66,8 +66,8 @@ public class FlatService {
         Page<Flat> result;
 
         if (block != null && occupied != null) {
-            result = flatRepository.findBySocietyIdAndBlock(
-                    societyId, block, pageable);
+            result = flatRepository.findBySocietyIdAndBlockAndOccupied(
+                    societyId, block, occupied, pageable);
         } else if (block != null) {
             result = flatRepository.findBySocietyIdAndBlock(
                     societyId, block, pageable);

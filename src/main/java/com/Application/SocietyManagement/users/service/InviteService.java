@@ -106,6 +106,7 @@ public class InviteService {
                 .role(invite.getRole())
                 .status(Status.ACTIVE)
                 .societyId(invite.getSocietyId())
+                .flatId(invite.getFlatId())
                 .build();
 
         User saved = userRepository.save(user);

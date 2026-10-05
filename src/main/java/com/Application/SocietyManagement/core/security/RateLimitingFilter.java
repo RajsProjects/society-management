@@ -33,7 +33,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        if (!path.startsWith("/api/v1/auth/")) {
+        boolean isProtected = path.startsWith("/api/v1/auth/")
+                || path.startsWith("/api/v1/societies/register")
+                || path.startsWith("/api/v1/societies/join/");
+
+        if (!isProtected) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -42,22 +46,18 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             String ip = extractClientIp(request);
             String key = "rate_limit:" + ip + ":" + path;
 
-            String countStr = redisTemplate.opsForValue().get(key);
-            int count = countStr != null ? Integer.parseInt(countStr) : 0;
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1L) {
+                redisTemplate.expire(key, WINDOW);
+            }
 
-            if (count >= MAX_REQUESTS) {
+            if (count != null && count > MAX_REQUESTS) {
                 log.warn("Rate limit exceeded for IP: {} on path: {}", ip, path);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");
                 response.getWriter().write(
                         "{\"error\": \"Too many requests. Please try again later.\"}");
                 return;
-            }
-
-            if (count == 0) {
-                redisTemplate.opsForValue().set(key, "1", WINDOW);
-            } else {
-                redisTemplate.opsForValue().increment(key);
             }
 
         } catch (Exception e) {
@@ -69,6 +69,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String extractClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
         return request.getRemoteAddr();
     }
 }

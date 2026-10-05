@@ -74,9 +74,20 @@ public class SocietyService {
         // upload document to S3
         String documentKey = null;
         if (document != null && !document.isEmpty()) {
+            if (document.getSize() > 5 * 1024 * 1024) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Document size exceeds 5MB limit");
+            }
+            String contentType = document.getContentType();
+            if (contentType == null || !(contentType.equalsIgnoreCase("application/pdf")
+                    || contentType.equalsIgnoreCase("image/jpeg")
+                    || contentType.equalsIgnoreCase("image/png")
+                    || contentType.equalsIgnoreCase("image/jpg"))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF, JPEG, and PNG files are allowed");
+            }
+
             documentKey = s3Service.uploadFile(
                     document.getBytes(),
-                    document.getContentType(),
+                    contentType,
                     "society-documents"
             );
         }

@@ -1,5 +1,6 @@
 server:
   port: ${PORT:${SERVER_PORT:8081}}
+  forward-headers-strategy: framework
 
 jwt:
   secret: ${JWT_SECRET}
@@ -13,9 +14,14 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   data:
     mongodb:
       uri: ${MONGODB_URI}
+      auto-index-creation: false
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
@@ -43,8 +49,10 @@ spring:
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: false
   swagger-ui:
     path: /swagger-ui.html
+    enabled: false
 
 management:
   endpoints:
