@@ -17,7 +17,7 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      - ./observability/prometheus.yml:/tmp/prometheus.yml:ro
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'

@@ -119,7 +119,7 @@ class FlatServiceTest {
     @DisplayName("getAll - returns paged flats with block and occupied filters")
     void getAll_withFilters() {
         Page<Flat> page = new PageImpl<>(List.of(flat));
-        when(flatRepository.findBySocietyIdAndBlock(eq(SOCIETY_ID), eq("A"), any(Pageable.class)))
+        when(flatRepository.findBySocietyIdAndBlockAndOccupied(eq(SOCIETY_ID), eq("A"), eq(true), any(Pageable.class)))
                 .thenReturn(page);
 
         PagedResponse<FlatResponse> result = flatService.getAll("A", true, 0, 10);

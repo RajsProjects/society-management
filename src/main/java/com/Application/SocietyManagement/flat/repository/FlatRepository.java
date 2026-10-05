@@ -12,6 +12,8 @@ public interface FlatRepository extends MongoRepository<Flat, String> {
     Page<Flat> findBySocietyId(String societyId, Pageable pageable);
     Page<Flat> findBySocietyIdAndBlock(
             String societyId, String block, Pageable pageable);
+    Page<Flat> findBySocietyIdAndBlockAndOccupied(
+            String societyId, String block, boolean occupied, Pageable pageable);
     Page<Flat> findBySocietyIdAndOccupied(
             String societyId, boolean occupied, Pageable pageable);
     Optional<Flat> findByIdAndSocietyId(String id, String societyId);

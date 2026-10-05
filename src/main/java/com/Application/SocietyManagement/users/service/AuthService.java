@@ -8,6 +8,7 @@ import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.society.entity.Society;
+import com.Application.SocietyManagement.society.enums.SocietyStatus;
 import com.Application.SocietyManagement.society.repository.SocietyRepository;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,14 +33,24 @@ public class AuthService {
         }
 
         String resolvedSocietyId = null;
-        if (request.getSocietyId() != null && !request.getSocietyId().isBlank()) {
-            resolvedSocietyId = request.getSocietyId();
-        } else if (request.getJoinCode() != null && !request.getJoinCode().isBlank() && societyRepository != null) {
-            resolvedSocietyId = societyRepository.findByJoinCode(request.getJoinCode())
-                    .map(Society::getId)
-                    .orElse(null);
+        if (request.getJoinCode() != null && !request.getJoinCode().isBlank() && societyRepository != null) {
+            Society society = societyRepository.findByJoinCode(request.getJoinCode().trim())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid join code"));
+            if (society.getStatus() != SocietyStatus.ACTIVE) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Society is not active");
+            }
+            resolvedSocietyId = society.getId();
         } else if (TenantContext.getSocietyId() != null && !TenantContext.getSocietyId().isBlank()) {
             resolvedSocietyId = TenantContext.getSocietyId();
+        } else if (request.getSocietyId() != null && !request.getSocietyId().isBlank()) {
+            if (societyRepository != null) {
+                societyRepository.findById(request.getSocietyId()).ifPresent(soc -> {
+                    if (soc.getStatus() != SocietyStatus.ACTIVE) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Society is not active");
+                    }
+                });
+            }
+            resolvedSocietyId = request.getSocietyId();
         }
 
         User user = User.builder()
