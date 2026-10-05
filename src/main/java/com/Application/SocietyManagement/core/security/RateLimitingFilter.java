@@ -1,6 +1,6 @@
 package com.Application.SocietyManagement.core.security;
 
-import jakarta.annotation.Nonnull;
+import org.springframework.lang.NonNull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,9 +26,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    @Nonnull HttpServletResponse response,
-                                    @Nonnull FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
         String path = request.getRequestURI();

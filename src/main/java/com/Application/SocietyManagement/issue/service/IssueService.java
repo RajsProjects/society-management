@@ -101,7 +101,7 @@ public class IssueService {
     public void addVote(String issueId, String userId) {
         Issue issue = findIssueById(issueId);
 
-        if (issue.getCreatorId().equals(userId)) {
+        if (java.util.Objects.equals(issue.getCreatorId(), userId)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Cannot vote on your own issue");
         }
@@ -118,6 +118,7 @@ public class IssueService {
     }
 
     public void removeVote(String issueId, String userId) {
+        findIssueById(issueId);
         IssueVote vote = issueVoteRepository
                 .findByIssueIdAndUserId(issueId, userId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -165,6 +166,7 @@ public class IssueService {
 
         List<String> creatorIds = issues.stream()
                 .map(Issue::getCreatorId)
+                .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
 

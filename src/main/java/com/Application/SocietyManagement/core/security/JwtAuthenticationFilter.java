@@ -4,7 +4,7 @@ import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
-import jakarta.annotation.Nonnull;
+import org.springframework.lang.NonNull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,9 +25,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailsService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    @Nonnull HttpServletResponse response,
-                                    @Nonnull FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");

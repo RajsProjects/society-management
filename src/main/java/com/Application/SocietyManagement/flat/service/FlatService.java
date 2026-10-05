@@ -21,8 +21,16 @@ public class FlatService {
 
     private final FlatRepository flatRepository;
 
-    public FlatResponse create(CreateFlatRequest request) {
+    private String requireSocietyId() {
         String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return societyId;
+    }
+
+    public FlatResponse create(CreateFlatRequest request) {
+        String societyId = requireSocietyId();
 
         if (flatRepository.existsByFlatNumberAndSocietyId(
                 request.getFlatNumber(), societyId)) {
@@ -50,7 +58,7 @@ public class FlatService {
     public PagedResponse<FlatResponse> getAll(String block,
                                               Boolean occupied,
                                               int page, int size) {
-        String societyId = TenantContext.getSocietyId();
+        String societyId = requireSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by("block").ascending()
                         .and(Sort.by("flatNumber").ascending()));
@@ -81,7 +89,7 @@ public class FlatService {
     }
 
     public FlatResponse getById(String flatId) {
-        String societyId = TenantContext.getSocietyId();
+        String societyId = requireSocietyId();
         Flat flat = flatRepository.findByIdAndSocietyId(flatId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Flat not found"));
@@ -89,7 +97,7 @@ public class FlatService {
     }
 
     public FlatResponse update(String flatId, CreateFlatRequest request) {
-        String societyId = TenantContext.getSocietyId();
+        String societyId = requireSocietyId();
         Flat flat = flatRepository.findByIdAndSocietyId(flatId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Flat not found"));
@@ -108,7 +116,7 @@ public class FlatService {
     }
 
     public void delete(String flatId) {
-        String societyId = TenantContext.getSocietyId();
+        String societyId = requireSocietyId();
         Flat flat = flatRepository.findByIdAndSocietyId(flatId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Flat not found"));

@@ -28,13 +28,25 @@ public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
 
+    private String requireSocietyId() {
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return societyId;
+    }
+
     public ComplaintResponse create(CreateComplaintRequest request,
                                     User currentUser) {
+        String societyId = requireSocietyId();
+        String firstName = currentUser.getFirstName() != null ? currentUser.getFirstName().trim() : "";
+        String lastName = currentUser.getLastName() != null ? currentUser.getLastName().trim() : "";
+        String residentName = (firstName + " " + lastName).trim();
+
         Complaint complaint = Complaint.builder()
-                .societyId(TenantContext.getSocietyId())
+                .societyId(societyId)
                 .residentId(currentUser.getId())
-                .residentName(currentUser.getFirstName()
-                        + " " + currentUser.getLastName())
+                .residentName(residentName.isEmpty() ? currentUser.getEmail() : residentName)
                 .apartmentNumber(currentUser.getFlatId())
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -55,7 +67,7 @@ public class ComplaintService {
             int page, int size,
             User currentUser) {
 
-        String societyId = TenantContext.getSocietyId();
+        String societyId = requireSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -184,8 +196,8 @@ public class ComplaintService {
         boolean isAdmin = currentUser.getRole() == Roles.ADMIN
                 || currentUser.getRole() == Roles.SUPER_ADMIN;
 
-        if (!complaint.getSocietyId().equals(TenantContext.getSocietyId())
-                || (!isAdmin && !complaint.getResidentId().equals(currentUser.getId()))) {
+        if (!java.util.Objects.equals(complaint.getSocietyId(), TenantContext.getSocietyId())
+                || (!isAdmin && !java.util.Objects.equals(complaint.getResidentId(), currentUser.getId()))) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "Access denied");
         }

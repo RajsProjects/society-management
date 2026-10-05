@@ -66,6 +66,11 @@ management:
       probes:
         enabled: true
       show-details: never
+  health:
+    mail:
+      enabled: false
+    redis:
+      enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
   metrics:
     export:
       prometheus:

@@ -120,14 +120,22 @@ public class EmailService {
         }
     }
 
+    private String resolveResidentName(User resident) {
+        if (resident == null) return "Resident";
+        String first = resident.getFirstName() != null ? resident.getFirstName().trim() : "";
+        String last = resident.getLastName() != null ? resident.getLastName().trim() : "";
+        String full = (first + " " + last).trim();
+        return full.isEmpty() ? resident.getEmail() : full;
+    }
+
     @Async
     public void sendBillGeneratedEmail(MaintenanceBill bill, User resident) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("residentName", resident.getFirstName() + " " + resident.getLastName());
+            ctx.setVariable("residentName", resolveResidentName(resident));
             ctx.setVariable("apartmentNumber", bill.getApartmentNumber());
             ctx.setVariable("billingMonth", bill.getBillingMonth());
-            ctx.setVariable("dueDate", bill.getDueDate().toString());
+            ctx.setVariable("dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : "");
             ctx.setVariable("amount", bill.getAmount());
 
             String html = templateEngine.process("email/bill-generated", ctx);
@@ -135,7 +143,7 @@ public class EmailService {
                     "Maintenance Bill Generated - " + bill.getBillingMonth(), html);
         } catch (Exception e) {
             log.error("Failed to send bill generated email to {}: {}",
-                    resident.getEmail(), e.getMessage());
+                    resident != null ? resident.getEmail() : "null", e.getMessage());
         }
     }
 
@@ -143,10 +151,10 @@ public class EmailService {
     public void sendReminderEmail(MaintenanceBill bill, User resident) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("residentName", resident.getFirstName() + " " + resident.getLastName());
+            ctx.setVariable("residentName", resolveResidentName(resident));
             ctx.setVariable("apartmentNumber", bill.getApartmentNumber());
             ctx.setVariable("billingMonth", bill.getBillingMonth());
-            ctx.setVariable("dueDate", bill.getDueDate().toString());
+            ctx.setVariable("dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : "");
             ctx.setVariable("amount", bill.getAmount());
 
             String html = templateEngine.process("email/bill-reminder", ctx);
@@ -154,7 +162,7 @@ public class EmailService {
                     "Payment Reminder - Bill Due in 3 Days", html);
         } catch (Exception e) {
             log.error("Failed to send reminder email to {}: {}",
-                    resident.getEmail(), e.getMessage());
+                    resident != null ? resident.getEmail() : "null", e.getMessage());
         }
     }
 
@@ -162,10 +170,10 @@ public class EmailService {
     public void sendOverdueEmail(MaintenanceBill bill, User resident) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("residentName", resident.getFirstName() + " " + resident.getLastName());
+            ctx.setVariable("residentName", resolveResidentName(resident));
             ctx.setVariable("apartmentNumber", bill.getApartmentNumber());
             ctx.setVariable("billingMonth", bill.getBillingMonth());
-            ctx.setVariable("dueDate", bill.getDueDate().toString());
+            ctx.setVariable("dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : "");
             ctx.setVariable("amount", bill.getAmount());
 
             String html = templateEngine.process("email/bill-overdue", ctx);
@@ -173,7 +181,7 @@ public class EmailService {
                     "⚠️ Maintenance Bill Overdue - " + bill.getBillingMonth(), html);
         } catch (Exception e) {
             log.error("Failed to send overdue email to {}: {}",
-                    resident.getEmail(), e.getMessage());
+                    resident != null ? resident.getEmail() : "null", e.getMessage());
         }
     }
 
@@ -181,7 +189,7 @@ public class EmailService {
     public void sendPaymentSuccessEmail(MaintenanceBill bill, User resident) {
         try {
             Context ctx = new Context();
-            ctx.setVariable("residentName", resident.getFirstName() + " " + resident.getLastName());
+            ctx.setVariable("residentName", resolveResidentName(resident));
             ctx.setVariable("apartmentNumber", bill.getApartmentNumber());
             ctx.setVariable("billingMonth", bill.getBillingMonth());
             ctx.setVariable("amount", bill.getAmount());
@@ -192,7 +200,7 @@ public class EmailService {
                     "✅ Payment Successful - " + bill.getBillingMonth(), html);
         } catch (Exception e) {
             log.error("Failed to send payment success email to {}: {}",
-                    resident.getEmail(), e.getMessage());
+                    resident != null ? resident.getEmail() : "null", e.getMessage());
         }
     }
 

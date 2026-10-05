@@ -437,6 +437,8 @@ class IssueServiceTest {
         @Test
         @DisplayName("success - deletes vote")
         void removeVote_success_deletesVote() {
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
+                    .thenReturn(Optional.of(issue));
             IssueVote vote = IssueVote.builder()
                     .issueId("issue1")
                     .userId("voter456")
@@ -451,8 +453,27 @@ class IssueServiceTest {
         }
 
         @Test
+        @DisplayName("issue not found - throws 404")
+        void removeVote_issueNotFound_throwsNotFound() {
+            when(issueRepository.findByIdAndSocietyId("nonexistent", "test-society-id"))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    issueService.removeVote("nonexistent", "voter456"))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException e = (ResponseStatusException) ex;
+                        assertThat(e.getStatusCode().value()).isEqualTo(404);
+                    });
+
+            verify(issueVoteRepository, never()).delete(any());
+        }
+
+        @Test
         @DisplayName("vote not found - throws 404")
         void removeVote_voteNotFound_throwsNotFound() {
+            when(issueRepository.findByIdAndSocietyId("issue1", "test-society-id"))
+                    .thenReturn(Optional.of(issue));
             when(issueVoteRepository.findByIssueIdAndUserId(
                     "issue1", "voter456"))
                     .thenReturn(Optional.empty());
