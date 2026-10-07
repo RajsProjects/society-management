@@ -29,9 +29,11 @@ public class Society extends BaseEntity {
     private String state;
     private String pincode;
     private Integer totalFlats;
+    @Indexed
     private String adminEmail;
 
     // Verification
+    @Indexed
     @Builder.Default
     private SocietyStatus status =
             SocietyStatus.PENDING_VERIFICATION;

@@ -4,9 +4,15 @@ import com.Application.SocietyManagement.core.common.BaseEntity;
 import com.Application.SocietyManagement.issue.enums.IssuePriority;
 import com.Application.SocietyManagement.issue.enums.IssueStatus;
 import lombok.*;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "issues")
+@CompoundIndexes({
+        @CompoundIndex(def = "{'societyId': 1, 'createdAt': -1}", name = "issue_society_created_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'status': 1, 'createdAt': -1}", name = "issue_society_status_created_idx")
+})
 @Getter
 @Setter
 @Builder

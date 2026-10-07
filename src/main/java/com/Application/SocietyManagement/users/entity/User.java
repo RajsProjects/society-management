@@ -5,6 +5,9 @@ import com.Application.SocietyManagement.users.enums.PlatformRole;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import lombok.*;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,6 +19,11 @@ import java.util.Collection;
 import java.util.List;
 
 @Document(collection = "users")
+@CompoundIndexes({
+        @CompoundIndex(def = "{'societyId': 1, 'status': 1}", name = "user_society_status_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'role': 1}", name = "user_society_role_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'status': 1, 'role': 1}", name = "user_society_status_role_idx")
+})
 @Getter
 @Setter
 @Builder
@@ -23,6 +31,8 @@ import java.util.List;
 @AllArgsConstructor
 public class User extends BaseEntity implements UserDetails {
     private String societyId;
+
+    @Indexed(unique = true)
     private String email;
     private String phone;                 // required
     private String passwordHash;
