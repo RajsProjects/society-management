@@ -11,8 +11,8 @@
 	<groupId>com.Application</groupId>
 	<artifactId>SocietyManagement</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>SocietyManagement</name>
+	<description>CivicLink Society Management System</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -111,7 +111,7 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.5.0</version>
+			<version>2.8.5</version>
 		</dependency>
 
 		<!-- Structured JSON logging -->

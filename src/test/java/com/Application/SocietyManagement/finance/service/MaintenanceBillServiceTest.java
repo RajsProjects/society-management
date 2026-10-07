@@ -233,6 +233,7 @@ class MaintenanceBillServiceTest {
         PagedResponse<MaintenanceBillDto> result =
                 billService.getBills(residentUser, BillStatus.PENDING, 0, 20);
 
+        assertThat(result.getContent()).hasSize(1);
         verify(billRepository).findByUserIdAndStatusAndSocietyId(
                 eq("resident123"), eq(BillStatus.PENDING), eq(SOCIETY_ID), any(Pageable.class));
     }

@@ -8,7 +8,6 @@ import com.Application.SocietyManagement.users.dto.InviteRequest;
 import com.Application.SocietyManagement.users.entity.InviteToken;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
-import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.InviteTokenRepository;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;

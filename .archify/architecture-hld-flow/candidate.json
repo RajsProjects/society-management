@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "CivicLink Society Management — High Level Architecture & Request Flow",
+    "subtitle": "Multi-Tenant Community Management SaaS (Spring Boot 3, MongoDB, Razorpay, AWS S3)",
+    "output": "high-level-design-flow.html",
+    "quality_profile": "showcase",
+    "visual_preset": "classic",
+    "animation": "trace",
+    "repository": {
+      "url": "https://github.com/RajsProjects/society-management.git",
+      "revision": "94468532e1e685f7ae4f298ee512f915c12d75bf",
+      "provider": "github"
+    }
+  },
+  "components": [
+    {
+      "id": "clients",
+      "type": "external",
+      "label": "Clients & Portals",
+      "sublabel": "Resident App • Admin Console",
+      "pos": [40, 310],
+      "size": [130, 64],
+      "icon": "person",
+      "tag": "Web / Mobile PWA"
+    },
+    {
+      "id": "security_pipeline",
+      "type": "security",
+      "label": "Security & Ingress",
+      "sublabel": "RateLimit • JWT • TenantContext",
+      "pos": [270, 295],
+      "size": [180, 90],
+      "icon": "security",
+      "tag": "Filter Pipeline",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/core/config/SecurityConfig.java", "line": 48, "end_line": 95, "label": "SecurityFilterChain" },
+        { "path": "src/main/java/com/Application/SocietyManagement/core/security/JwtAuthenticationFilter.java", "line": 28, "end_line": 68, "label": "JwtAuthenticationFilter" }
+      ]
+    },
+    {
+      "id": "auth_users",
+      "type": "backend",
+      "label": "Auth & Residents",
+      "sublabel": "BCrypt • Invites • Role RBAC",
+      "pos": [560, 80],
+      "size": [160, 60],
+      "icon": "backend",
+      "tag": "/api/v1/auth",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/users/service/AuthService.java", "line": 35, "end_line": 75, "label": "AuthService" }
+      ]
+    },
+    {
+      "id": "society_management",
+      "type": "backend",
+      "label": "Society Directory",
+      "sublabel": "Onboarding • Join Codes • Flats",
+      "pos": [560, 195],
+      "size": [160, 60],
+      "icon": "backend",
+      "tag": "/api/v1/societies",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/society/service/SocietyService.java", "line": 56, "end_line": 120, "label": "SocietyService" }
+      ]
+    },
+    {
+      "id": "billing_finance",
+      "type": "backend",
+      "label": "Maintenance Billing",
+      "sublabel": "Monthly Invoicing • Auto Overdue",
+      "pos": [560, 310],
+      "size": [160, 60],
+      "icon": "backend",
+      "tag": "/api/v1/bills",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/finance/service/MaintenanceBillService.java", "line": 39, "end_line": 85, "label": "MaintenanceBillService" }
+      ]
+    },
+    {
+      "id": "community_ops",
+      "type": "backend",
+      "label": "Complaints & Issues",
+      "sublabel": "Ticket Workflow • Quorum Voting",
+      "pos": [560, 425],
+      "size": [160, 60],
+      "icon": "backend",
+      "tag": "/api/v1/issues",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/issue/service/IssueService.java", "line": 37, "end_line": 80, "label": "IssueService" }
+      ]
+    },
+    {
+      "id": "subscription_service",
+      "type": "backend",
+      "label": "SaaS Subscriptions",
+      "sublabel": "Plan Tiers • Webhook Verification",
+      "pos": [560, 540],
+      "size": [160, 60],
+      "icon": "backend",
+      "tag": "/api/v1/subscriptions",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/subscription/service/SubscriptionService.java", "line": 46, "end_line": 90, "label": "SubscriptionService" }
+      ]
+    },
+    {
+      "id": "event_bus",
+      "type": "messagebus",
+      "label": "Async Event Bus",
+      "sublabel": "Spring ApplicationEventPublisher",
+      "pos": [840, 80],
+      "size": [160, 60],
+      "icon": "messagebus",
+      "tag": "@Async Events",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/communication/email/service/EmailService.java", "line": 45, "end_line": 65, "label": "EmailEventListener" }
+      ]
+    },
+    {
+      "id": "s3_storage",
+      "type": "cloud",
+      "label": "AWS S3 Storage",
+      "sublabel": "Registration Proof Documents",
+      "pos": [840, 195],
+      "size": [160, 60],
+      "icon": "cloud",
+      "tag": "AWS SDK v2",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/core/service/S3Service.java", "line": 20, "end_line": 56, "label": "S3Service" }
+      ]
+    },
+    {
+      "id": "mongodb",
+      "type": "database",
+      "label": "MongoDB Database",
+      "sublabel": "Multi-Tenant Isolated Collections",
+      "pos": [840, 330],
+      "size": [160, 80],
+      "icon": "database",
+      "tag": "Spring Data Mongo",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/finance/repository/MaintenanceBillRepository.java", "line": 14, "end_line": 32, "label": "TenantRepositories" }
+      ]
+    },
+    {
+      "id": "razorpay",
+      "type": "external",
+      "label": "Razorpay Gateway",
+      "sublabel": "Checkout Orders & Webhooks",
+      "pos": [840, 540],
+      "size": [160, 60],
+      "icon": "external",
+      "tag": "Payment SDK",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/subscription/service/WebhookService.java", "line": 38, "end_line": 65, "label": "WebhookService" }
+      ]
+    },
+    {
+      "id": "email_engine",
+      "type": "cloud",
+      "label": "Email Delivery",
+      "sublabel": "Thymeleaf Templates • SMTP",
+      "pos": [1110, 80],
+      "size": [150, 60],
+      "icon": "cloud",
+      "tag": "JavaMailSender",
+      "sources": [
+        { "path": "src/main/java/com/Application/SocietyManagement/communication/email/service/EmailService.java", "line": 85, "end_line": 105, "label": "ThymeleafMimeMessage" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "CivicLink Spring Boot 3 Core Application Platform",
+      "wraps": ["security_pipeline", "auth_users", "society_management", "billing_finance", "community_ops", "subscription_service", "event_bus"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Isolated Tenant Data Store",
+      "wraps": ["mongodb"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "clients-to-gateway",
+      "from": "clients",
+      "to": "security_pipeline",
+      "label": "HTTPS / REST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "gateway-to-auth",
+      "from": "security_pipeline",
+      "to": "auth_users",
+      "label": "Auth & Invites",
+      "variant": "security"
+    },
+    {
+      "id": "gateway-to-society",
+      "from": "security_pipeline",
+      "to": "society_management",
+      "label": "Society KYC",
+      "variant": "security"
+    },
+    {
+      "id": "gateway-to-billing",
+      "from": "security_pipeline",
+      "to": "billing_finance",
+      "label": "Maintenance Bills",
+      "variant": "security"
+    },
+    {
+      "id": "gateway-to-community",
+      "from": "security_pipeline",
+      "to": "community_ops",
+      "label": "Tickets & Votes",
+      "variant": "security"
+    },
+    {
+      "id": "gateway-to-subscription",
+      "from": "security_pipeline",
+      "to": "subscription_service",
+      "label": "SaaS Plans",
+      "variant": "security"
+    },
+    {
+      "id": "auth-to-events",
+      "from": "auth_users",
+      "to": "event_bus",
+      "label": "Invite Token",
+      "variant": "dashed"
+    },
+    {
+      "id": "events-to-email",
+      "from": "event_bus",
+      "to": "email_engine",
+      "label": "Async Send",
+      "variant": "emphasis"
+    },
+    {
+      "id": "society-to-s3",
+      "from": "society_management",
+      "to": "s3_storage",
+      "label": "Upload Document",
+      "variant": "default"
+    },
+    {
+      "id": "billing-to-mongo",
+      "from": "billing_finance",
+      "to": "mongodb",
+      "label": "Bills Collection",
+      "variant": "default"
+    },
+    {
+      "id": "community-to-mongo",
+      "from": "community_ops",
+      "to": "mongodb",
+      "label": "Votes & Issues",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "sub-to-razorpay",
+      "from": "subscription_service",
+      "to": "razorpay",
+      "label": "Orders & Webhooks",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Multi-Tenant Isolation",
+      "items": [
+        "JwtAuthenticationFilter extracts tenant context (societyId) from token claims and sets TenantContext ThreadLocal",
+        "SubscriptionEnforcementFilter gates requests to ensure active subscription or valid 14-day trial",
+        "Repository queries enforce tenant partitioning across MongoDB collections (users, flats, bills, issues)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Core Domain Services",
+      "items": [
+        "Auth & Invites: Secure onboarding with BCrypt passwords and cryptographically signed invite tokens",
+        "Maintenance Billing: Monthly automated invoicing with cron-driven auto-overdue transitions",
+        "Civic Democracy: Resident issue polling with quorum-based voting and complaint lifecycle management"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Integrations & Asynchrony",
+      "items": [
+        "Razorpay: Dual-purpose payment gateway for society SaaS subscriptions and resident maintenance bills",
+        "AWS S3: Cloud object storage for society registration proof documents with presigned URLs",
+        "Async Email Engine: Thymeleaf-rendered HTML notifications dispatched via Spring ApplicationEvents"
+      ]
+    }
+  ]
+}

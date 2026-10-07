@@ -45,7 +45,7 @@ public class SubscriptionService {
 
     public OrderResponse createOrder(SubscriptionPlan plan) {
         String societyId = TenantContext.getSocietyId();
-        Society society = societyRepository.findById(societyId)
+        societyRepository.findById(societyId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Society not found"));
 
         long amount = planPricingConfig.getAmountFor(plan);
@@ -56,7 +56,13 @@ public class SubscriptionService {
             orderRequest.put("currency", "INR");
             orderRequest.put("receipt", "sub_" + UUID.randomUUID());
 
-            Order order = razorpayClient.orders.create(orderRequest);
+            String orderId;
+            if (keyId != null && keyId.contains("dummy")) {
+                orderId = "order_mock_" + UUID.randomUUID().toString().substring(0, 14);
+            } else {
+                Order order = razorpayClient.orders.create(orderRequest);
+                orderId = order.get("id");
+            }
 
             Subscription subscription = Subscription.builder()
                     .societyId(societyId)
@@ -64,7 +70,7 @@ public class SubscriptionService {
                     .status(SubscriptionStatus.ACTIVE) // becomes effective on payment success
                     .amount(amount)
                     .currency("INR")
-                    .razorpayOrderId(order.get("id"))
+                    .razorpayOrderId(orderId)
                     .paymentStatus(PaymentStatus.PENDING)
                     .build();
 
@@ -72,7 +78,7 @@ public class SubscriptionService {
 
             return OrderResponse.builder()
                     .subscriptionId(subscription.getId())
-                    .razorpayOrderId(order.get("id"))
+                    .razorpayOrderId(orderId)
                     .amount(amount)
                     .currency("INR")
                     .keyId(keyId)

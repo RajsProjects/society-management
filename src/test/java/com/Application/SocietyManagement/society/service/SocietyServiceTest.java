@@ -16,7 +16,6 @@ import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
-import com.Application.SocietyManagement.users.service.JwtService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,9 +57,6 @@ class SocietyServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private JwtService jwtService;
 
     @Mock
     private S3Service s3Service;
