@@ -16,12 +16,10 @@ public class PlanPricingConfig {
     private long scale;
 
     public long getAmountFor(SubscriptionPlan plan) {
-        return switch (plan) {
-            case BASIC -> basic;
-            case GROWTH -> growth;
-            case SCALE -> scale;
-            default -> throw new IllegalArgumentException(
-                    "Plan " + plan + " is not self-serve. Contact sales for ENTERPRISE/TRIAL pricing.");
-        };
+        if (plan == SubscriptionPlan.BASIC) return basic;
+        if (plan == SubscriptionPlan.GROWTH) return growth;
+        if (plan == SubscriptionPlan.SCALE) return scale;
+        throw new IllegalArgumentException(
+                "Plan " + plan + " is not self-serve. Contact sales for ENTERPRISE/TRIAL pricing.");
     }
 }

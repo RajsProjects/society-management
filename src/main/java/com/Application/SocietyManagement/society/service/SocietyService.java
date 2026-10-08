@@ -17,7 +17,6 @@ import com.Application.SocietyManagement.users.enums.PlatformRole;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
-import com.Application.SocietyManagement.users.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +43,6 @@ public class SocietyService {
     private final SocietyRepository societyRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
     private final S3Service s3Service;
     private final JoinCodeGenerator joinCodeGenerator;
 

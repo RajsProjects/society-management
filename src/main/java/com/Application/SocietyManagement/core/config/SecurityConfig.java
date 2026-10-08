@@ -97,8 +97,12 @@ public class SecurityConfig {
     }
 
     @Bean
+    @SuppressWarnings({"java:S4502", "squid:S4502"})
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // Disabling CSRF is safe: this is a stateless REST API using Bearer JWT authentication.
+                // Browsers do not attach Authorization headers automatically on cross-site requests,
+                // and no session cookies or HTTP credentials are used.
                 .csrf(AbstractHttpConfigurer::disable)
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.deny())

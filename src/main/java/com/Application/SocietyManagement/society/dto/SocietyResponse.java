@@ -1,12 +1,6 @@
 package com.Application.SocietyManagement.society.dto;
 
 import com.Application.SocietyManagement.society.entity.Society;
-import lombok.Builder;
-import lombok.Getter;
-
-import java.time.Instant;
-
-import com.Application.SocietyManagement.society.entity.Society;
 import com.Application.SocietyManagement.society.enums.SocietyStatus;
 import com.Application.SocietyManagement.society.enums.SubscriptionPlan;
 import com.Application.SocietyManagement.society.enums.SubscriptionStatus;

@@ -1,11 +1,8 @@
 package com.Application.SocietyManagement.society.controller;
 
-import com.Application.SocietyManagement.society.dto.RegisterSocietyRequest;
 import com.Application.SocietyManagement.society.dto.SocietyResponse;
 import com.Application.SocietyManagement.society.dto.VerifySocietyRequest;
 import com.Application.SocietyManagement.society.enums.SocietyStatus;
-import com.Application.SocietyManagement.society.enums.SubscriptionPlan;
-import com.Application.SocietyManagement.society.enums.SubscriptionStatus;
 import com.Application.SocietyManagement.society.service.SocietyService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
@@ -19,7 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -28,7 +26,6 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -58,15 +55,15 @@ class SocietyControllerTest {
 
         HandlerMethodArgumentResolver userResolver = new HandlerMethodArgumentResolver() {
             @Override
-            public boolean supportsParameter(MethodParameter parameter) {
+            public boolean supportsParameter(@NonNull MethodParameter parameter) {
                 return parameter.getParameterType().equals(User.class);
             }
 
             @Override
-            public Object resolveArgument(MethodParameter parameter,
-                                          ModelAndViewContainer mavContainer,
-                                          NativeWebRequest webRequest,
-                                          WebDataBinderFactory binderFactory) {
+            public Object resolveArgument(@NonNull MethodParameter parameter,
+                                          @Nullable ModelAndViewContainer mavContainer,
+                                          @NonNull NativeWebRequest webRequest,
+                                          @Nullable WebDataBinderFactory binderFactory) {
                 return platformAdminUser;
             }
         };

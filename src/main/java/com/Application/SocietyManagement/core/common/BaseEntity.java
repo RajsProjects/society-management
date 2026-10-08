@@ -2,11 +2,11 @@ package com.Application.SocietyManagement.core.common;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.*;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.Instant;
-import java.util.Collection;
 
 @Getter
 @Setter

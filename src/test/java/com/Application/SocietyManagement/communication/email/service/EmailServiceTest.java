@@ -7,7 +7,6 @@ import com.Application.SocietyManagement.finance.enums.BillStatus;
 import com.Application.SocietyManagement.finance.repository.MaintenanceBillRepository;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.repository.UserRepository;
-import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,10 +25,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
