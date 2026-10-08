@@ -25,7 +25,14 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        String traceId = UUID.randomUUID().toString().substring(0, 8);
+        String incomingTraceId = request.getHeader("X-Trace-Id");
+        if (incomingTraceId == null || incomingTraceId.isBlank()) {
+            incomingTraceId = request.getHeader("X-Request-Id");
+        }
+        String traceId = (incomingTraceId != null && !incomingTraceId.isBlank())
+                ? incomingTraceId.trim()
+                : UUID.randomUUID().toString().substring(0, 8);
+
         long startTime = System.currentTimeMillis();
 
         MDC.put("traceId", traceId);

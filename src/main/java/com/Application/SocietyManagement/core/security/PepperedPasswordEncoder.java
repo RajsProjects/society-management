@@ -10,7 +10,7 @@ public class PepperedPasswordEncoder implements PasswordEncoder {
 
     public PepperedPasswordEncoder(String pepper) {
         this.bcrypt = new BCryptPasswordEncoder(12); // strength 12 = good balance of security vs speed
-        this.pepper = pepper;
+        this.pepper = pepper != null ? pepper : "";
     }
 
     @Override

@@ -34,7 +34,13 @@ public class MaintenanceBillService {
 
     private final MaintenanceBillRepository billRepository;
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher eventPublisher; // ← add this
+    private final ApplicationEventPublisher eventPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.Application.SocietyManagement.core.util.DistributedLockService lockService;
 
     public MaintenanceBillDto createBill(CreateBillRequest request) {
         String societyId = requireSocietyId();
@@ -162,14 +168,34 @@ public class MaintenanceBillService {
     // runs at midnight UTC every day
     @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
     public void markOverdueBills() {
-        List<MaintenanceBill> overdue = billRepository
-                .findByStatusAndDueDateBefore(BillStatus.PENDING, LocalDate.now());
+        if (lockService != null && !lockService.tryLock("markOverdueBills", java.time.Duration.ofMinutes(15))) {
+            log.info("Another cluster node is currently executing markOverdueBills. Skipping on this node.");
+            return;
+        }
+        if (mongoTemplate != null) {
+            org.springframework.data.mongodb.core.query.Query query =
+                    org.springframework.data.mongodb.core.query.Query.query(
+                            org.springframework.data.mongodb.core.query.Criteria.where("status").is(BillStatus.PENDING)
+                                    .and("dueDate").lt(LocalDate.now())
+                    );
+            org.springframework.data.mongodb.core.query.Update update =
+                    new org.springframework.data.mongodb.core.query.Update()
+                            .set("status", BillStatus.OVERDUE)
+                            .set("updatedAt", java.time.Instant.now());
 
-        if (overdue.isEmpty()) return;
+            com.mongodb.client.result.UpdateResult result =
+                    mongoTemplate.updateMulti(query, update, MaintenanceBill.class);
+            log.info("Marked {} bills as OVERDUE via atomic updateMulti", result.getModifiedCount());
+        } else {
+            List<MaintenanceBill> overdue = billRepository
+                    .findByStatusAndDueDateBefore(BillStatus.PENDING, LocalDate.now());
 
-        overdue.forEach(bill -> bill.setStatus(BillStatus.OVERDUE));
-        billRepository.saveAll(overdue);
-        log.info("Marked {} bills as OVERDUE", overdue.size());
+            if (overdue.isEmpty()) return;
+
+            overdue.forEach(bill -> bill.setStatus(BillStatus.OVERDUE));
+            billRepository.saveAll(overdue);
+            log.info("Marked {} bills as OVERDUE", overdue.size());
+        }
     }
 
     private String requireSocietyId() {

@@ -85,8 +85,31 @@ public class UserService {
 
     public UserResponseDto getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + email));
         return UserResponseDto.from(user);
     }
-    
+
+    public UserResponseDto getCurrentUser(User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+        User user = userRepository.findById(currentUser.getId()).orElse(currentUser);
+        return UserResponseDto.from(user);
+    }
+
+    public void changePassword(User currentUser, com.Application.SocietyManagement.users.dto.ChangePasswordRequest request, org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (passwordEncoder != null) {
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password does not match");
+            }
+            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        }
+        userRepository.save(user);
+    }
 }

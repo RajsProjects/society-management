@@ -37,8 +37,14 @@ public class EmailService {
     private final MaintenanceBillRepository billRepository;
     private final UserRepository userRepository;
 
+    @Autowired(required = false)
+    private com.Application.SocietyManagement.core.util.DistributedLockService lockService;
+
     @Value("${spring.mail.username:noreply@societymanagement.com}")
     private String fromEmail;
+
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     // ── Event Listeners ──
 
@@ -58,6 +64,11 @@ public class EmailService {
 
     @Scheduled(cron = "0 0 9 * * *", zone = "UTC")
     public void sendBillReminders() {
+        if (lockService != null && !lockService.tryLock("sendBillReminders", java.time.Duration.ofMinutes(15))) {
+            log.info("Another cluster node is executing sendBillReminders. Skipping.");
+            return;
+        }
+
         LocalDate threeDaysFromNow = LocalDate.now().plusDays(3);
 
         List<MaintenanceBill> dueSoonBills = billRepository
@@ -72,6 +83,11 @@ public class EmailService {
 
     @Scheduled(cron = "0 0 9 * * *", zone = "UTC")
     public void sendOverdueNotifications() {
+        if (lockService != null && !lockService.tryLock("sendOverdueNotifications", java.time.Duration.ofMinutes(15))) {
+            log.info("Another cluster node is executing sendOverdueNotifications. Skipping.");
+            return;
+        }
+
         List<MaintenanceBill> overdueBills = billRepository
                 .findByStatusAndDueDateBefore(BillStatus.OVERDUE, LocalDate.now());
 
@@ -112,7 +128,7 @@ public class EmailService {
             ctx.setVariable("token", token);
             ctx.setVariable("role", role);
             ctx.setVariable("acceptUrl",
-                    "http://localhost:5173/accept-invite?token=" + token);
+                    frontendUrl + "/accept-invite?token=" + token);
             ctx.setVariable("expiresIn", "48 hours");
 
             String html = templateEngine.process("email/invite", ctx);
