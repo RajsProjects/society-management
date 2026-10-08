@@ -25,6 +25,10 @@ public class FlatResponse {
     private Instant createdAt;
 
     public static FlatResponse from(Flat flat) {
+        return from(flat, true);
+    }
+
+    public static FlatResponse from(Flat flat, boolean privileged) {
         return FlatResponse.builder()
                 .id(flat.getId())
                 .societyId(flat.getSocietyId())
@@ -32,12 +36,33 @@ public class FlatResponse {
                 .floor(flat.getFloor())
                 .flatNumber(flat.getFlatNumber())
                 .ownerName(flat.getOwnerName())
-                .ownerEmail(flat.getOwnerEmail())
-                .ownerPhone(flat.getOwnerPhone())
+                .ownerEmail(privileged ? flat.getOwnerEmail() : maskEmail(flat.getOwnerEmail()))
+                .ownerPhone(privileged ? flat.getOwnerPhone() : maskPhone(flat.getOwnerPhone()))
                 .occupied(flat.isOccupied())
                 .type(flat.getType())
                 .areaSqFt(flat.getAreaSqFt())
                 .createdAt(flat.getCreatedAt())
                 .build();
+    }
+
+    public static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return "***" + (atIndex >= 0 ? email.substring(atIndex) : "");
+        }
+        return email.charAt(0) + "***" + email.substring(atIndex);
+    }
+
+    public static String maskPhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return null;
+        }
+        if (phone.length() <= 4) {
+            return "****";
+        }
+        return "******" + phone.substring(phone.length() - 4);
     }
 }

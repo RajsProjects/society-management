@@ -83,14 +83,14 @@ public class FinanceController {
 
     @Operation(
             summary = "Pay bill",
-            description = "Simulates a UPI payment for a bill. Resident must own the bill. Full payment only."
+            description = "Submits a UPI transaction reference for payment verification. Resident must own the bill. Full payment only."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Payment successful"),
-            @ApiResponse(responseCode = "400", description = "Partial payment attempted"),
+            @ApiResponse(responseCode = "200", description = "Payment reference submitted for verification"),
+            @ApiResponse(responseCode = "400", description = "Partial payment attempted or invalid transaction format"),
             @ApiResponse(responseCode = "403", description = "Bill not owned by resident or bill is overdue"),
             @ApiResponse(responseCode = "404", description = "Bill not found"),
-            @ApiResponse(responseCode = "409", description = "Bill already paid")
+            @ApiResponse(responseCode = "409", description = "Bill already paid or duplicate transaction submitted")
     })
     @PostMapping("/{id}/pay")
     @PreAuthorize("hasRole('RESIDENT')")
@@ -99,5 +99,30 @@ public class FinanceController {
             @AuthenticationPrincipal User currentUser,
             @RequestBody @Valid PayBillRequest request) {
         return ResponseEntity.ok(billService.payBill(id, currentUser, request));
+    }
+
+    @Operation(
+            summary = "Verify bill payment",
+            description = "Approves a pending payment reference after bank reconciliation. Admin/Accountant only."
+    )
+    @PostMapping("/{id}/verify-payment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT')")
+    public ResponseEntity<MaintenanceBillDto> verifyPayment(
+            @Parameter(description = "Bill ID") @PathVariable String id,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(billService.verifyPayment(id, currentUser));
+    }
+
+    @Operation(
+            summary = "Reject bill payment",
+            description = "Rejects a fraudulent or unverified payment reference. Admin/Accountant only."
+    )
+    @PostMapping("/{id}/reject-payment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT')")
+    public ResponseEntity<MaintenanceBillDto> rejectPayment(
+            @Parameter(description = "Bill ID") @PathVariable String id,
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false, defaultValue = "Payment verification failed") String reason) {
+        return ResponseEntity.ok(billService.rejectPayment(id, currentUser, reason));
     }
 }

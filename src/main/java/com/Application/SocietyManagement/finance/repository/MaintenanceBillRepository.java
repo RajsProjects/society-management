@@ -28,4 +28,5 @@ public interface MaintenanceBillRepository extends MongoRepository<MaintenanceBi
     java.util.Optional<MaintenanceBill> findByIdAndSocietyId(String id, String societyId);
     long countBySocietyId(String societyId);
     long countBySocietyIdAndStatus(String societyId, BillStatus status);
+    boolean existsByUpiTransactionId(String upiTransactionId);
 }

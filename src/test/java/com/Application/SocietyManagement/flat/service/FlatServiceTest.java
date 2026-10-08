@@ -201,4 +201,65 @@ class FlatServiceTest {
 
         verify(flatRepository, never()).delete(any());
     }
+
+    @Test
+    @DisplayName("getById - masks owner PII for other residents")
+    void getById_asResident_masksOwnerPii() {
+        when(flatRepository.findByIdAndSocietyId("flat-001", SOCIETY_ID))
+                .thenReturn(Optional.of(flat));
+
+        com.Application.SocietyManagement.users.entity.User resident =
+                com.Application.SocietyManagement.users.entity.User.builder()
+                        .role(com.Application.SocietyManagement.users.enums.Roles.RESIDENT)
+                        .email("other@example.com")
+                        .phone("1111111111")
+                        .flatId("flat-other")
+                        .build();
+
+        FlatResponse response = flatService.getById("flat-001", resident);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getOwnerEmail()).isEqualTo("j***@example.com");
+        assertThat(response.getOwnerPhone()).isEqualTo("******3210");
+    }
+
+    @Test
+    @DisplayName("getById - exposes full PII for ADMIN")
+    void getById_asAdmin_exposesOwnerPii() {
+        when(flatRepository.findByIdAndSocietyId("flat-001", SOCIETY_ID))
+                .thenReturn(Optional.of(flat));
+
+        com.Application.SocietyManagement.users.entity.User admin =
+                com.Application.SocietyManagement.users.entity.User.builder()
+                        .role(com.Application.SocietyManagement.users.enums.Roles.ADMIN)
+                        .email("admin@example.com")
+                        .build();
+
+        FlatResponse response = flatService.getById("flat-001", admin);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getOwnerEmail()).isEqualTo("john@example.com");
+        assertThat(response.getOwnerPhone()).isEqualTo("9876543210");
+    }
+
+    @Test
+    @DisplayName("getById - exposes full PII for flat owner")
+    void getById_asFlatOwner_exposesOwnPii() {
+        when(flatRepository.findByIdAndSocietyId("flat-001", SOCIETY_ID))
+                .thenReturn(Optional.of(flat));
+
+        com.Application.SocietyManagement.users.entity.User owner =
+                com.Application.SocietyManagement.users.entity.User.builder()
+                        .role(com.Application.SocietyManagement.users.enums.Roles.RESIDENT)
+                        .email("john@example.com")
+                        .phone("9876543210")
+                        .flatId("flat-001")
+                        .build();
+
+        FlatResponse response = flatService.getById("flat-001", owner);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getOwnerEmail()).isEqualTo("john@example.com");
+        assertThat(response.getOwnerPhone()).isEqualTo("9876543210");
+    }
 }

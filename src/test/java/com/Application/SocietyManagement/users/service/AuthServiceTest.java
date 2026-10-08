@@ -24,6 +24,9 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.Application.SocietyManagement.society.entity.Society;
+import com.Application.SocietyManagement.society.enums.SocietyStatus;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthService")
 class AuthServiceTest {
@@ -51,6 +54,12 @@ class AuthServiceTest {
         signupRequest.setFirstName("John");
         signupRequest.setLastName("Doe");
         signupRequest.setFlatId("A-101");
+        signupRequest.setJoinCode("SOC-TEST123");
+
+        Society testSoc = Society.builder().status(SocietyStatus.ACTIVE).build();
+        testSoc.setId("society-123");
+        lenient().when(societyRepository.findByJoinCode("SOC-TEST123"))
+                .thenReturn(Optional.of(testSoc));
 
         loginRequest = new LoginRequest();
         loginRequest.setEmail("resident@test.com");
@@ -187,6 +196,40 @@ class AuthServiceTest {
             verify(userRepository).save(argThat(user ->
                     user.getFirstName().equals("John") &&
                             user.getLastName().equals("Doe")));
+        }
+
+        @Test
+        @DisplayName("signup - throws 400 when join code is missing")
+        void signup_missingJoinCode_throwsBadRequest() {
+            signupRequest.setJoinCode(null);
+            when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.signup(signupRequest))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException rse = (ResponseStatusException) ex;
+                        assertThat(rse.getStatusCode().value()).isEqualTo(400);
+                        assertThat(rse.getReason()).contains("Valid society join code is required");
+                    });
+        }
+
+        @Test
+        @DisplayName("signup - throws 403 when society is not active")
+        void signup_inactiveSociety_throwsForbidden() {
+            signupRequest.setJoinCode("SOC-INACTIVE");
+            when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
+            Society inactiveSoc = Society.builder().status(SocietyStatus.PENDING_VERIFICATION).build();
+            inactiveSoc.setId("soc-inactive");
+            when(societyRepository.findByJoinCode("SOC-INACTIVE"))
+                    .thenReturn(Optional.of(inactiveSoc));
+
+            assertThatThrownBy(() -> authService.signup(signupRequest))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException rse = (ResponseStatusException) ex;
+                        assertThat(rse.getStatusCode().value()).isEqualTo(403);
+                        assertThat(rse.getReason()).contains("Society is not active");
+                    });
         }
     }
 

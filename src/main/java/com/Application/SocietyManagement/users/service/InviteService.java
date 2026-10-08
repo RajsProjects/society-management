@@ -34,9 +34,45 @@ public class InviteService {
     private final JwtService jwtService;
     private final EmailService emailService;
 
-    public Map<String, String> invite(InviteRequest request,
-                                      String invitedBy) {
+    public Map<String, String> invite(InviteRequest request, User currentUser) {
+        if (currentUser == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        return invite(request, currentUser.getId(), currentUser.getRole());
+    }
+
+    public Map<String, String> invite(InviteRequest request, String invitedById, com.Application.SocietyManagement.users.enums.Roles callerRole) {
         String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+
+        if (request.getRole() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required");
+        }
+
+        // Enforce role hierarchy: prevent privilege escalation
+        if (callerRole == com.Application.SocietyManagement.users.enums.Roles.ADMIN) {
+            if (request.getRole() == com.Application.SocietyManagement.users.enums.Roles.ADMIN
+                    || request.getRole() == com.Application.SocietyManagement.users.enums.Roles.SUPER_ADMIN) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Society administrators cannot invite admin or super admin accounts"
+                );
+            }
+        } else if (callerRole == com.Application.SocietyManagement.users.enums.Roles.SUPER_ADMIN) {
+            if (request.getRole() == com.Application.SocietyManagement.users.enums.Roles.SUPER_ADMIN) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Super administrators cannot invite additional super administrators"
+                );
+            }
+        } else if (callerRole != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only administrators can send invitations"
+            );
+        }
 
         // check email not already registered
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -63,7 +99,7 @@ public class InviteService {
                 .flatId(request.getFlatId())
                 .expiresAt(Instant.now().plus(48, ChronoUnit.HOURS))
                 .used(false)
-                .invitedBy(invitedBy)
+                .invitedBy(invitedById)
                 .build();
 
         inviteTokenRepository.save(invite);
@@ -72,13 +108,17 @@ public class InviteService {
         emailService.sendInviteEmail(
                 request.getEmail(), token, request.getRole().name());
 
-        log.info("Invite sent to {} for role {}", request.getEmail(),
-                request.getRole());
+        log.info("Invite sent to {} for role {} by {}", request.getEmail(),
+                request.getRole(), invitedById);
 
         return Map.of(
                 "message", "Invite sent to " + request.getEmail(),
                 "expiresIn", "48 hours"
         );
+    }
+
+    public Map<String, String> invite(InviteRequest request, String invitedBy) {
+        return invite(request, invitedBy, com.Application.SocietyManagement.users.enums.Roles.SUPER_ADMIN);
     }
 
     public AuthResponse acceptInvite(AcceptInviteRequest request) {

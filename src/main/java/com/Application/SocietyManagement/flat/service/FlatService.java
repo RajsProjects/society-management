@@ -58,6 +58,13 @@ public class FlatService {
     public PagedResponse<FlatResponse> getAll(String block,
                                               Boolean occupied,
                                               int page, int size) {
+        return getAll(block, occupied, page, size, null);
+    }
+
+    public PagedResponse<FlatResponse> getAll(String block,
+                                              Boolean occupied,
+                                              int page, int size,
+                                              com.Application.SocietyManagement.users.entity.User currentUser) {
         String societyId = requireSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by("block").ascending()
@@ -80,7 +87,7 @@ public class FlatService {
 
         return PagedResponse.<FlatResponse>builder()
                 .content(result.getContent().stream()
-                        .map(FlatResponse::from).toList())
+                        .map(flat -> toResponse(flat, currentUser)).toList())
                 .page(result.getNumber())
                 .size(result.getSize())
                 .totalElements(result.getTotalElements())
@@ -89,11 +96,43 @@ public class FlatService {
     }
 
     public FlatResponse getById(String flatId) {
+        return getById(flatId, null);
+    }
+
+    public FlatResponse getById(String flatId, com.Application.SocietyManagement.users.entity.User currentUser) {
         String societyId = requireSocietyId();
         Flat flat = flatRepository.findByIdAndSocietyId(flatId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Flat not found"));
-        return FlatResponse.from(flat);
+        return toResponse(flat, currentUser);
+    }
+
+    private FlatResponse toResponse(Flat flat, com.Application.SocietyManagement.users.entity.User currentUser) {
+        boolean privileged = isPrivileged(flat, currentUser);
+        return FlatResponse.from(flat, privileged);
+    }
+
+    private boolean isPrivileged(Flat flat, com.Application.SocietyManagement.users.entity.User currentUser) {
+        if (currentUser == null) {
+            return true;
+        }
+        if (currentUser.getPlatformRole() == com.Application.SocietyManagement.users.enums.PlatformRole.PLATFORM_ADMIN) {
+            return true;
+        }
+        if (currentUser.getRole() == com.Application.SocietyManagement.users.enums.Roles.ADMIN
+                || currentUser.getRole() == com.Application.SocietyManagement.users.enums.Roles.SUPER_ADMIN) {
+            return true;
+        }
+        if (flat.getId() != null && flat.getId().equals(currentUser.getFlatId())) {
+            return true;
+        }
+        if (currentUser.getEmail() != null && currentUser.getEmail().equalsIgnoreCase(flat.getOwnerEmail())) {
+            return true;
+        }
+        if (currentUser.getPhone() != null && currentUser.getPhone().equals(flat.getOwnerPhone())) {
+            return true;
+        }
+        return false;
     }
 
     public FlatResponse update(String flatId, CreateFlatRequest request) {

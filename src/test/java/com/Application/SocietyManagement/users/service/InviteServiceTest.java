@@ -189,4 +189,36 @@ class InviteServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Invite token has expired");
     }
+
+    @Test
+    @DisplayName("invite - throws 403 when ADMIN attempts to invite SUPER_ADMIN")
+    void invite_adminAttemptsToInviteSuperAdmin_throwsForbidden() {
+        inviteRequest.setRole(Roles.SUPER_ADMIN);
+        User adminCaller = User.builder().role(Roles.ADMIN).build();
+        adminCaller.setId("admin-1");
+
+        assertThatThrownBy(() -> inviteService.invite(inviteRequest, adminCaller))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode().value()).isEqualTo(403);
+                    assertThat(rse.getReason()).contains("cannot invite admin or super admin accounts");
+                });
+    }
+
+    @Test
+    @DisplayName("invite - throws 403 when ADMIN attempts to invite another ADMIN")
+    void invite_adminAttemptsToInviteAdmin_throwsForbidden() {
+        inviteRequest.setRole(Roles.ADMIN);
+        User adminCaller = User.builder().role(Roles.ADMIN).build();
+        adminCaller.setId("admin-1");
+
+        assertThatThrownBy(() -> inviteService.invite(inviteRequest, adminCaller))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode().value()).isEqualTo(403);
+                    assertThat(rse.getReason()).contains("cannot invite admin or super admin accounts");
+                });
+    }
 }
