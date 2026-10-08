@@ -25,7 +25,7 @@ graph TD
     %% ==========================================
     %% NETWORK & REQUEST TRANSMISSION
     %% ==========================================
-    UserBlock -->|"1. HTTPS Request\n• Method: GET / POST / PUT / PATCH / DELETE\n• Headers: Authorization: Bearer <JWT>\n• Headers: Content-Type: application/json\n• Body: JSON / Multipart"| ApplicationBlock
+    UserBlock -->|"1. HTTPS Request\n• Method: GET / POST / PUT / PATCH / DELETE\n• Headers: Authorization: Bearer [JWT]\n• Headers: Content-Type: application/json\n• Body: JSON / Multipart"| ApplicationBlock
 
     %% ==========================================
     %% APPLICATION / BACKEND BLOCK
@@ -163,8 +163,8 @@ graph TD
     %% ==========================================
     %% RESPONSE FLOW
     %% ==========================================
-    ControllerLayer -->|"2. Return ResponseEntity<DTO>\n• Map Entity -> DTO\n• Set HTTP Status (200, 201)\n• TenantContext.clear() in finally"| ResponsePipeline
-    GlobalExceptionHandler -->|"2. Return ResponseEntity<ErrorResponse>\n• Error message & timestamp\n• HTTP 400 / 401 / 403 / 404 / 500"| ResponsePipeline
+    ControllerLayer -->|"2. Return ResponseEntity(DTO)\n• Map Entity -> DTO\n• Set HTTP Status (200, 201)\n• TenantContext.clear() in finally"| ResponsePipeline
+    GlobalExceptionHandler -->|"2. Return ResponseEntity(ErrorResponse)\n• Error message & timestamp\n• HTTP 400 / 401 / 403 / 404 / 500"| ResponsePipeline
 
     subgraph ResponsePipeline["📦 4. RESPONSE PIPELINE"]
         direction TB
@@ -236,13 +236,13 @@ sequenceDiagram
 
     opt Asynchronous Side Effect Needed (Bill / Payment)
         Service->>EventPub: publishEvent(BillGeneratedEvent)
-        EventPub-)Email: Handle asynchronously in background worker
+        EventPub-->>Email: Handle asynchronously in background worker
     end
 
     Service-->>Controller: Return mapped Response DTO
     Controller-->>User: 200 OK / 201 Created (JSON Response Body)
 
-    Note over JwtFilter,TenantCtx: finally { TenantContext.clear(); }
+    Note over JwtFilter, TenantCtx: Filter finally block: TenantContext.clear() called
 ```
 
 ---
