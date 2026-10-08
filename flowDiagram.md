@@ -14,91 +14,84 @@ graph TD
     %% USER BLOCK
     %% ==========================================
     subgraph UserBlock["👤 1. USER & CLIENT BLOCK"]
-        direction TB
-        ResidentUser["📱 Resident (Mobile App / Web)"]
-        AdminUser["💻 Society Admin (Admin Portal)"]
-        SuperAdminUser["🛡️ Platform Admin (Console)"]
-        GateSecurity["🛂 Security Guard (Gate Tablet)"]
-        RazorpayWebhook["💳 Razorpay Payment Webhooks"]
+        ResidentUser["📱 Resident<br/>Mobile App & Web"]
+        AdminUser["💻 Society Admin<br/>Admin Portal"]
+        SuperAdminUser["🛡️ Platform Admin<br/>Platform Console"]
+        GateSecurity["🛂 Security Guard<br/>Gate Tablet"]
+        RazorpayWebhook["💳 Razorpay<br/>Payment Webhooks"]
     end
 
     %% ==========================================
     %% NETWORK & REQUEST TRANSMISSION
     %% ==========================================
-    UserBlock -->|"1. HTTPS Request\n• Method: GET / POST / PUT / PATCH / DELETE\n• Headers: Authorization: Bearer [JWT]\n• Headers: Content-Type: application/json\n• Body: JSON / Multipart"| ApplicationBlock
+    UserBlock -->|"1. HTTPS Request<br/>• Bearer JWT Auth<br/>• JSON / Multipart"| ApplicationBlock
 
     %% ==========================================
     %% APPLICATION / BACKEND BLOCK
     %% ==========================================
     subgraph ApplicationBlock["🏢 2. APPLICATION / BACKEND BLOCK (Spring Boot 3.5 / Java 21)"]
-        direction TB
 
         %% Ingress & Security Filters
-        subgraph FilterPipeline["🛡️ A. Edge & Security Filter Pipeline"]
-            direction TB
-            CorsFilter["🌐 CorsFilter\nValidate Origin & Allowed Headers"]
-            LoggingFilter["📝 RequestLoggingFilter\nAssign Correlation ID & Log Ingress"]
-            RateLimiterFilter["⚡ RedisRateLimiterFilter\nSliding Window Rate Limit (100 req/min)"]
-            JwtFilter["🔐 JwtAuthenticationFilter\n1. Extract Bearer Token\n2. Validate Signature & Expiry\n3. Load UserDetails via UserRepository\n4. Extract societyId from Claims\n5. Set SecurityContext & TenantContext"]
-            SecurityFilterChain["🚦 SecurityFilterChain\nRole-Based Access Control (RBAC)\n• PERMIT_ALL: /api/v1/auth/**, /swagger-ui/**\n• ROLE_ADMIN: /api/v1/users/**, /api/v1/flats/**\n• ROLE_RESIDENT: /api/v1/complaints/**, /api/v1/issues/**"]
+        subgraph FilterPipeline["🛡️ A. Edge & Security Filters"]
+            CorsFilter["🌐 CorsFilter<br/>Allowed Origins"]
+            LoggingFilter["📝 RequestLoggingFilter<br/>Trace ID & Latency"]
+            RateLimiterFilter["⚡ RedisRateLimiter<br/>Sliding Window Limit"]
+            JwtFilter["🔐 JwtAuthFilter<br/>Signature & Claims"]
+            SecurityFilterChain["🚦 SecurityFilterChain<br/>RBAC Permissions"]
 
             CorsFilter --> LoggingFilter --> RateLimiterFilter --> JwtFilter --> SecurityFilterChain
         end
 
         %% Context Isolation
-        subgraph TenantLayer["🏢 B. Multi-Tenant Context Engine"]
-            TenantContextHolder["🧵 TenantContext (ThreadLocal)\n• Holds current societyId\n• Scopes all downstream queries\n• Guaranteed cleanup in finally block"]
+        subgraph TenantLayer["🏢 B. Multi-Tenant Context"]
+            TenantContextHolder["🧵 TenantContext<br/>ThreadLocal societyId<br/>Guaranteed Cleanup"]
         end
 
         %% Controllers
         subgraph ControllerLayer["🎮 C. REST API Controller Layer"]
-            direction TB
-            AuthController["🔑 AuthController\n/api/v1/auth"]
-            AdminController["👥 AdminController\n/api/v1/users"]
-            SocietyController["🏛️ SocietyController\n/api/v1/societies"]
-            FlatController["🚪 FlatController\n/api/v1/flats"]
-            ComplaintController["🧾 ComplaintController\n/api/v1/complaints"]
-            AnnouncementController["📢 AnnouncementController\n/api/v1/announcements"]
-            IssueController["🗳️ IssueController\n/api/v1/issues"]
-            FinanceController["💳 FinanceController\n/api/v1/finance"]
-            SubscriptionController["📦 SubscriptionController\n/api/v1/subscriptions"]
-            DashboardController["📊 DashboardController\n/api/v1/dashboard/stats"]
-            WebhookController["⚡ WebhookController\n/api/v1/webhooks/razorpay"]
+            AuthController["🔑 AuthController<br/>/api/v1/auth"]
+            AdminController["👥 AdminController<br/>/api/v1/users"]
+            SocietyController["🏛️ SocietyController<br/>/api/v1/societies"]
+            FlatController["🚪 FlatController<br/>/api/v1/flats"]
+            ComplaintController["🧾 ComplaintController<br/>/api/v1/complaints"]
+            AnnouncementController["📢 AnnouncementController<br/>/api/v1/announcements"]
+            IssueController["🗳️ IssueController<br/>/api/v1/issues"]
+            FinanceController["💳 FinanceController<br/>/api/v1/finance"]
+            SubscriptionController["📦 SubscriptionController<br/>/api/v1/subscriptions"]
+            DashboardController["📊 DashboardController<br/>/api/v1/dashboard/stats"]
+            WebhookController["⚡ WebhookController<br/>/api/v1/webhooks"]
         end
 
         %% Global Exception Handler
         subgraph ExceptionLayer["⚠️ D. Centralized Error Handling"]
-            GlobalExceptionHandler["GlobalExceptionHandler (@RestControllerAdvice)\n• Handles MethodArgumentNotValidException (400)\n• Handles ResponseStatusException (403, 404, 409)\n• Returns Standardized JSON ErrorResponse"]
+            GlobalExceptionHandler["GlobalExceptionHandler<br/>Validation (400) • Auth (403)<br/>NotFound (404) • Server (500)"]
         end
 
         %% Business Service Layer
-        subgraph ServiceLayer["⚙️ E. Business Logic & Domain Services"]
-            direction TB
-            AuthService["AuthService\nBCrypt + JWT Issuance + Pepper"]
-            UserService["UserService\nResident Status Lifecycle"]
-            SocietyService["SocietyService\nOnboarding & Join Codes"]
-            FlatService["FlatService\nAllocation & Occupancy"]
-            ComplaintService["ComplaintService\nCategorization & Resolution"]
-            AnnouncementService["AnnouncementService\nTargeted Notices"]
-            IssueService["IssueService\nCommunity Issues & Voting"]
-            BillService["MaintenanceBillService\nBilling, Due Dates & UPI"]
-            SubService["SubscriptionService\nPlans, Limits & Expirations"]
-            WebHookService["WebhookService\nSignature Verification & Activation"]
-            S3Service["S3Service\nPresigned Document/Photo URLs"]
-            EventPublisher["📢 ApplicationEventPublisher\nDecoupled Async Events"]
+        subgraph ServiceLayer["⚙️ E. Business Logic & Services"]
+            AuthService["AuthService<br/>BCrypt & Pepper"]
+            UserService["UserService<br/>Resident Status"]
+            SocietyService["SocietyService<br/>Onboarding Codes"]
+            FlatService["FlatService<br/>Flats & Units"]
+            ComplaintService["ComplaintService<br/>Complaints Flow"]
+            AnnouncementService["AnnouncementService<br/>Targeted Notices"]
+            IssueService["IssueService<br/>Issues & Voting"]
+            BillService["MaintenanceBillService<br/>Billing & Dues"]
+            SubService["SubscriptionService<br/>Plans & Limits"]
+            WebHookService["WebhookService<br/>Signature Check"]
+            S3Service["S3Service<br/>Presigned S3 URLs"]
+            EventPublisher["📢 EventPublisher<br/>Async Spring Events"]
         end
 
         %% Event Listeners
-        subgraph AsyncListeners["📨 F. Asynchronous Event Listeners"]
-            direction TB
-            EmailEventListener["EmailEventListener (@Async)\nListens for: BillGeneratedEvent,\nPaymentSuccessEvent, InviteSentEvent"]
-            EmailService["EmailService\nDispatches HTML Emails via SMTP/SES"]
+        subgraph AsyncListeners["📨 F. Async Event Listeners"]
+            EmailEventListener["EmailEventListener<br/>@Async Worker"]
+            EmailService["EmailService<br/>SMTP / SES Delivery"]
             EmailEventListener --> EmailService
         end
 
         %% Persistence Repositories
-        subgraph RepositoryLayer["💾 G. Spring Data Persistence Repositories"]
-            direction TB
+        subgraph RepositoryLayer["💾 G. Spring Data Repositories"]
             UserRepo["UserRepository"]
             SocietyRepo["SocietyRepository"]
             FlatRepo["FlatRepository"]
@@ -109,15 +102,15 @@ graph TD
             SubRepo["SubscriptionRepository"]
             TokenRepo["InviteTokenRepository"]
             VoteRepo["IssueVoteRepository"]
-            MongoTemplate["MongoTemplate (Atomic Bulk Operations)"]
+            MongoTemplate["MongoTemplate<br/>Atomic Bulk Ops"]
         end
 
         %% Link internal application layers
         SecurityFilterChain --> ControllerLayer
-        JwtFilter -.->|"Populate ThreadLocal"| TenantContextHolder
+        JwtFilter -.->|"Populate Context"| TenantContextHolder
         TenantContextHolder -.->|"Inject societyId"| ServiceLayer
         ControllerLayer --> ServiceLayer
-        ControllerLayer -.->|"On Validation Failure"| GlobalExceptionHandler
+        ControllerLayer -.->|"On Error"| GlobalExceptionHandler
         ServiceLayer --> RepositoryLayer
         ServiceLayer --> EventPublisher
         EventPublisher --> EmailEventListener
@@ -127,53 +120,51 @@ graph TD
     %% INFRASTRUCTURE & EXTERNAL BLOCK
     %% ==========================================
     subgraph InfrastructureBlock["☁️ 3. DATABASE & CLOUD INFRASTRUCTURE"]
-        direction TB
 
-        subgraph MongoDbAtlas["🍃 MongoDB Atlas (Replica Set)"]
-            UsersCol[("users collection\n(Indexed by email, societyId)")]
-            SocietiesCol[("societies collection\n(Indexed by joinCode, code)")]
-            FlatsCol[("flats collection\n(Compound: societyId + flatNumber)")]
-            ComplaintsCol[("complaints collection\n(Compound: societyId + status)")]
-            AnnouncementsCol[("announcements collection\n(Compound: societyId + createdAt)")]
-            IssuesCol[("issues & votes collection")]
-            BillsCol[("maintenance_bills collection\n(Compound: societyId + userId)")]
-            SubsCol[("subscriptions collection")]
+        subgraph MongoDbAtlas["🍃 MongoDB Atlas"]
+            UsersCol[("users collection<br/>email & societyId")]
+            SocietiesCol[("societies collection<br/>joinCode index")]
+            FlatsCol[("flats collection<br/>societyId + flatNumber")]
+            ComplaintsCol[("complaints collection<br/>societyId + status")]
+            AnnouncementsCol[("announcements collection<br/>societyId + createdAt")]
+            IssuesCol[("issues & votes<br/>societyId index")]
+            BillsCol[("maintenance_bills<br/>societyId + userId")]
+            SubsCol[("subscriptions<br/>orderId index")]
         end
 
-        subgraph RedisCache["⚡ Redis (Cluster / In-Memory)"]
-            RateLimitCache["Rate Limit Counters\n(TTL Sliding Window)"]
-            TokenBlacklist["JWT Revocation & Cache"]
+        subgraph RedisCache["⚡ Redis Cache"]
+            RateLimitCache["Rate Limit Keys<br/>Sliding Window TTL"]
+            TokenBlacklist["JWT Revocation<br/>Distributed Cache"]
         end
 
-        subgraph ExternalCloud["🌐 External Cloud Providers"]
-            AwsS3["🪣 AWS S3\nDocument & Photo Bucket"]
-            RazorpayGateway["💳 Razorpay Gateway\nOrders & Webhooks"]
-            MailServer["✉️ SMTP / AWS SES\nEmail Delivery"]
+        subgraph ExternalCloud["🌐 External Cloud"]
+            AwsS3["🪣 AWS S3<br/>Documents & Photos"]
+            RazorpayGateway["💳 Razorpay<br/>Orders & Webhooks"]
+            MailServer["✉️ Mail Server<br/>SMTP / AWS SES"]
         end
     end
 
     %% Connect application to infrastructure
-    RateLimiterFilter <-->|"Incr / Window Check"| RateLimitCache
+    RateLimiterFilter <-->|"Window Check"| RateLimitCache
     JwtFilter <-->|"Check Revocation"| TokenBlacklist
-    RepositoryLayer <-->|"Indexed B-Tree Queries"| MongoDbAtlas
-    S3Service <-->|"Generate Presigned Put/Get URLs"| AwsS3
-    SubService <-->|"Create Order / Fetch Payment"| RazorpayGateway
+    RepositoryLayer <-->|"Indexed B-Tree"| MongoDbAtlas
+    S3Service <-->|"Presigned URLs"| AwsS3
+    SubService <-->|"Orders & Payments"| RazorpayGateway
     EmailService -->|"Send Email"| MailServer
 
     %% ==========================================
     %% RESPONSE FLOW
     %% ==========================================
-    ControllerLayer -->|"2. Return ResponseEntity(DTO)\n• Map Entity -> DTO\n• Set HTTP Status (200, 201)\n• TenantContext.clear() in finally"| ResponsePipeline
-    GlobalExceptionHandler -->|"2. Return ResponseEntity(ErrorResponse)\n• Error message & timestamp\n• HTTP 400 / 401 / 403 / 404 / 500"| ResponsePipeline
+    ControllerLayer -->|"2. ResponseEntity (DTO)<br/>• Status 200/201<br/>• Context Cleared"| ResponsePipeline
+    GlobalExceptionHandler -->|"2. ErrorResponse<br/>• Status 4xx/5xx<br/>• Standard JSON"| ResponsePipeline
 
     subgraph ResponsePipeline["📦 4. RESPONSE PIPELINE"]
-        direction TB
-        Serializer["Jackson JSON Serializer\nFormat DTO to UTF-8 JSON"]
-        HttpResponse["HTTP Response\nHeaders + Status Code + Body"]
+        Serializer["Jackson Serializer<br/>DTO to UTF-8 JSON"]
+        HttpResponse["HTTP Response<br/>Headers & Body"]
         Serializer --> HttpResponse
     end
 
-    ResponsePipeline -->|"3. Clean JSON Output\n(e.g., 200 OK with PagedResponse or 201 Created)"| UserBlock
+    ResponsePipeline -->|"3. Clean JSON Output<br/>(200 OK / 201 Created)"| UserBlock
 ```
 
 ---
