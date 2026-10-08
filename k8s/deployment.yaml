@@ -28,11 +28,11 @@ spec:
                 name: society-secrets
           resources:
             requests:
-              memory: "256Mi"
+              memory: "384Mi"
               cpu: "250m"
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              memory: "1024Mi"
+              cpu: "1000m"
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness

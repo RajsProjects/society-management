@@ -75,6 +75,7 @@ public class SecurityConfig {
                 .toList());
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization", "X-Trace-Id", "Content-Disposition"));
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -97,6 +98,38 @@ public class SecurityConfig {
     }
 
     @Bean
+    public org.springframework.security.web.AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE);
+            java.util.Map<String, Object> body = java.util.Map.of(
+                    "timestamp", java.time.Instant.now().toString(),
+                    "status", 401,
+                    "error", "Unauthorized",
+                    "message", authException.getMessage() != null ? authException.getMessage() : "Full authentication is required to access this resource",
+                    "path", request.getRequestURI()
+            );
+            new com.fasterxml.jackson.databind.ObjectMapper().writeValue(response.getOutputStream(), body);
+        };
+    }
+
+    @Bean
+    public org.springframework.security.web.access.AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE);
+            java.util.Map<String, Object> body = java.util.Map.of(
+                    "timestamp", java.time.Instant.now().toString(),
+                    "status", 403,
+                    "error", "Forbidden",
+                    "message", accessDeniedException.getMessage() != null ? accessDeniedException.getMessage() : "Access is denied",
+                    "path", request.getRequestURI()
+            );
+            new com.fasterxml.jackson.databind.ObjectMapper().writeValue(response.getOutputStream(), body);
+        };
+    }
+
+    @Bean
     @SuppressWarnings({"java:S4502", "squid:S4502"})
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -112,6 +145,10 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint())
+                        .accessDeniedHandler(accessDeniedHandler())
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/login",
@@ -126,7 +163,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/actuator/health",
-                                "/actuator/health/**"
+                                "/actuator/health/**",
+                                "/actuator/prometheus"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

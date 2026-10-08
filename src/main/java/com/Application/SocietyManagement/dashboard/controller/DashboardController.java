@@ -40,37 +40,50 @@ public class DashboardController {
     public ResponseEntity<DashboardStats> getStats() {
         String societyId = TenantContext.getSocietyId();
 
+        java.util.concurrent.CompletableFuture<Long> totalResidents = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> userRepository.countBySocietyIdAndRole(societyId, Roles.RESIDENT));
+        java.util.concurrent.CompletableFuture<Long> pendingApprovals = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> userRepository.countBySocietyIdAndStatus(societyId, Status.PENDING));
+        java.util.concurrent.CompletableFuture<Long> totalFlats = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> flatRepository.countBySocietyId(societyId));
+        java.util.concurrent.CompletableFuture<Long> occupiedFlats = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> flatRepository.countBySocietyIdAndOccupied(societyId, true));
+        java.util.concurrent.CompletableFuture<Long> openComplaints = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.OPEN));
+        java.util.concurrent.CompletableFuture<Long> inProgressComplaints = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.IN_PROGRESS));
+        java.util.concurrent.CompletableFuture<Long> resolvedComplaints = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.RESOLVED));
+        java.util.concurrent.CompletableFuture<Long> totalBills = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> billRepository.countBySocietyId(societyId));
+        java.util.concurrent.CompletableFuture<Long> paidBills = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> billRepository.countBySocietyIdAndStatus(societyId, BillStatus.PAID));
+        java.util.concurrent.CompletableFuture<Long> overdueBills = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> billRepository.countBySocietyIdAndStatus(societyId, BillStatus.OVERDUE));
+        java.util.concurrent.CompletableFuture<Long> openIssues = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> issueRepository.countBySocietyIdAndStatus(societyId, IssueStatus.OPEN));
+        java.util.concurrent.CompletableFuture<Long> resolvedIssues = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> issueRepository.countBySocietyIdAndStatus(societyId, IssueStatus.RESOLVED));
+
+        java.util.concurrent.CompletableFuture.allOf(
+                totalResidents, pendingApprovals, totalFlats, occupiedFlats,
+                openComplaints, inProgressComplaints, resolvedComplaints,
+                totalBills, paidBills, overdueBills, openIssues, resolvedIssues
+        ).join();
+
         DashboardStats stats = DashboardStats.builder()
-                .totalResidents(userRepository
-                        .countBySocietyIdAndRole(societyId, Roles.RESIDENT))
-                .pendingApprovals(userRepository
-                        .countBySocietyIdAndStatus(societyId, Status.PENDING))
-                .totalFlats(flatRepository
-                        .countBySocietyId(societyId))
-                .occupiedFlats(flatRepository
-                        .countBySocietyIdAndOccupied(societyId, true))
-                .openComplaints(complaintRepository
-                        .countBySocietyIdAndStatus(societyId,
-                                ComplaintStatus.OPEN))
-                .inProgressComplaints(complaintRepository
-                        .countBySocietyIdAndStatus(societyId,
-                                ComplaintStatus.IN_PROGRESS))
-                .resolvedComplaints(complaintRepository
-                        .countBySocietyIdAndStatus(societyId,
-                                ComplaintStatus.RESOLVED))
-                .totalBills(billRepository
-                        .countBySocietyId(societyId))
-                .paidBills(billRepository
-                        .countBySocietyIdAndStatus(societyId, BillStatus.PAID))
-                .overdueBills(billRepository
-                        .countBySocietyIdAndStatus(societyId,
-                                BillStatus.OVERDUE))
-                .openIssues(issueRepository
-                        .countBySocietyIdAndStatus(societyId,
-                                IssueStatus.OPEN))
-                .resolvedIssues(issueRepository
-                        .countBySocietyIdAndStatus(societyId,
-                                IssueStatus.RESOLVED))
+                .totalResidents(totalResidents.join())
+                .pendingApprovals(pendingApprovals.join())
+                .totalFlats(totalFlats.join())
+                .occupiedFlats(occupiedFlats.join())
+                .openComplaints(openComplaints.join())
+                .inProgressComplaints(inProgressComplaints.join())
+                .resolvedComplaints(resolvedComplaints.join())
+                .totalBills(totalBills.join())
+                .paidBills(paidBills.join())
+                .overdueBills(overdueBills.join())
+                .openIssues(openIssues.join())
+                .resolvedIssues(resolvedIssues.join())
                 .build();
 
         return ResponseEntity.ok(stats);

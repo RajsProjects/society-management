@@ -78,6 +78,16 @@ public class GlobalExceptionHandler {
                 "Required header missing: " + ex.getHeaderName(), request));
     }
 
+    // 413 - upload size exceeded
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex,
+            HttpServletRequest request) {
+        log.warn("Payload too large at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(error(413, "Uploaded file exceeds maximum allowed size (5MB)", request));
+    }
+
     // 400 - illegal argument exception
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(

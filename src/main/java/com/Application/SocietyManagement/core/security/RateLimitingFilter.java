@@ -44,11 +44,19 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         try {
             String ip = extractClientIp(request);
-            String key = "rate_limit:" + ip + ":" + path;
+            String normalizedPath = path.startsWith("/api/v1/societies/join/")
+                    ? "/api/v1/societies/join"
+                    : path;
+            String key = "rate_limit:" + ip + ":" + normalizedPath;
 
             Long count = redisTemplate.opsForValue().increment(key);
             if (count != null && count == 1L) {
                 redisTemplate.expire(key, WINDOW);
+            } else if (count != null && count > 1L) {
+                Long ttl = redisTemplate.getExpire(key);
+                if (ttl == null || ttl < 0) {
+                    redisTemplate.expire(key, WINDOW);
+                }
             }
 
             if (count != null && count > MAX_REQUESTS) {

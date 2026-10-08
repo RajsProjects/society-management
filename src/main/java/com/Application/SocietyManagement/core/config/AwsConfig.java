@@ -23,8 +23,15 @@ public class AwsConfig {
 
     @Bean
     public S3Client s3Client() {
+        software.amazon.awssdk.core.client.config.ClientOverrideConfiguration overrideConfig =
+                software.amazon.awssdk.core.client.config.ClientOverrideConfiguration.builder()
+                        .apiCallTimeout(java.time.Duration.ofSeconds(10))
+                        .apiCallAttemptTimeout(java.time.Duration.ofSeconds(5))
+                        .build();
+
         return S3Client.builder()
                 .region(Region.of(region))
+                .overrideConfiguration(overrideConfig)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
                 .build();

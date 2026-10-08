@@ -164,6 +164,7 @@ public class IssueService {
     private List<IssueResponse> toResponseList(List<Issue> issues) {
         if (issues.isEmpty()) return List.of();
 
+        List<String> issueIds = issues.stream().map(Issue::getId).filter(java.util.Objects::nonNull).toList();
         List<String> creatorIds = issues.stream()
                 .map(Issue::getCreatorId)
                 .filter(java.util.Objects::nonNull)
@@ -173,6 +174,20 @@ public class IssueService {
         Map<String, User> creators = userRepository.findAllById(creatorIds)
                 .stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
+
+        Map<String, Long> voteCountMap = new java.util.HashMap<>();
+        try {
+            var counts = issueVoteRepository.countVotesByIssueIds(issueIds);
+            if (counts != null) {
+                for (var vc : counts) {
+                    if (vc.id() != null) {
+                        voteCountMap.put(vc.id(), vc.count());
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // Fallback for environments where aggregation is un-mocked
+        }
 
         return issues.stream().map(issue -> {
             User creator = creators.get(issue.getCreatorId());
@@ -184,6 +199,10 @@ public class IssueService {
                       .build()
                     : null;
 
+            long voteCount = voteCountMap.containsKey(issue.getId())
+                    ? voteCountMap.get(issue.getId())
+                    : issueVoteRepository.countByIssueId(issue.getId());
+
             return IssueResponse.builder()
                     .id(issue.getId())
                     .title(issue.getTitle())
@@ -192,7 +211,7 @@ public class IssueService {
                     .status(issue.getStatus())
                     .priority(issue.getPriority())
                     .creator(creatorDto)
-                    .voteCount(issueVoteRepository.countByIssueId(issue.getId()))
+                    .voteCount(voteCount)
                     .createdAt(issue.getCreatedAt())
                     .updatedAt(issue.getUpdatedAt())
                     .build();

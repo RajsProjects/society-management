@@ -63,15 +63,29 @@ public class AdminSeeder {
                     });
 
             userRepository.findByEmail(cleanEmail).ifPresentOrElse(existingAdmin -> {
-                existingAdmin.setPasswordHash(passwordEncoder.encode(cleanPassword));
-                existingAdmin.setRole(Roles.SUPER_ADMIN);
-                existingAdmin.setPlatformRole(PlatformRole.PLATFORM_ADMIN);
-                existingAdmin.setStatus(Status.ACTIVE);
+                boolean modified = false;
+                if (existingAdmin.getRole() != Roles.SUPER_ADMIN) {
+                    existingAdmin.setRole(Roles.SUPER_ADMIN);
+                    modified = true;
+                }
+                if (existingAdmin.getPlatformRole() != PlatformRole.PLATFORM_ADMIN) {
+                    existingAdmin.setPlatformRole(PlatformRole.PLATFORM_ADMIN);
+                    modified = true;
+                }
+                if (existingAdmin.getStatus() != Status.ACTIVE) {
+                    existingAdmin.setStatus(Status.ACTIVE);
+                    modified = true;
+                }
                 if (existingAdmin.getSocietyId() == null || existingAdmin.getSocietyId().isBlank()) {
                     existingAdmin.setSocietyId(saved.getId());
+                    modified = true;
                 }
-                userRepository.save(existingAdmin);
-                log.info("Platform admin credentials updated/synced for: {}", cleanEmail);
+                if (modified) {
+                    userRepository.save(existingAdmin);
+                    log.info("Platform admin roles/society synced for: {}", cleanEmail);
+                } else {
+                    log.info("Platform admin verified: {}", cleanEmail);
+                }
             }, () -> {
                 User admin = User.builder()
                         .email(cleanEmail)

@@ -17,14 +17,40 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.Application.SocietyManagement.users.dto.UserResponseDto;
+import com.Application.SocietyManagement.users.entity.User;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
-@Tag(name = "User management", description = "Admin operations for managing resident accounts")
+@Tag(name = "User management", description = "Operations for user profiles and resident accounts")
 public class AdminController {
 
     private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Operation(
+            summary = "Get current user profile",
+            description = "Returns profile details of the currently authenticated user."
+    )
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDto> getCurrentUser(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.getCurrentUser(currentUser));
+    }
+
+    @Operation(
+            summary = "Change password",
+            description = "Updates password for the currently authenticated user."
+    )
+    @PostMapping("/change-password")
+    public ResponseEntity<java.util.Map<String, String>> changePassword(
+            @AuthenticationPrincipal User currentUser,
+            @RequestBody @Valid com.Application.SocietyManagement.users.dto.ChangePasswordRequest request) {
+        userService.changePassword(currentUser, request, passwordEncoder);
+        return ResponseEntity.ok(java.util.Map.of("message", "Password changed successfully"));
+    }
 
     @Operation(
             summary = "List all users",
@@ -36,6 +62,7 @@ public class AdminController {
             @ApiResponse(responseCode = "403", description = "Not an admin")
     })
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PagedResponse<UserSummarydto>> getUsers(
             @Parameter(description = "Page number, 0-indexed")
             @RequestParam(defaultValue = "0") int page,
@@ -59,6 +86,7 @@ public class AdminController {
             @ApiResponse(responseCode = "404", description = "User not found")
     })
     @PatchMapping("/{userId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserSummarydto> updateStatus(
             @Parameter(description = "User ID") @PathVariable String userId,
             @RequestBody @Valid UpdateStatusRequest request) {
