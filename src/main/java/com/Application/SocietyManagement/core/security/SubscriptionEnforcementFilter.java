@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.core.security;
 
 import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.society.entity.Society;
+import com.Application.SocietyManagement.society.enums.SocietyStatus;
 import com.Application.SocietyManagement.society.enums.SubscriptionStatus;
 import com.Application.SocietyManagement.society.repository.SocietyRepository;
 import org.springframework.lang.NonNull;
@@ -72,16 +73,26 @@ public class SubscriptionEnforcementFilter extends OncePerRequestFilter {
         }
 
         Society society = societyRepository.findById(societyId).orElse(null);
-        if (society != null &&
-                (society.getSubscriptionStatus() == SubscriptionStatus.EXPIRED
-                        || society.getSubscriptionStatus() == SubscriptionStatus.PAST_DUE)) {
-            response.setStatus(402); // Payment Required
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"error\":\"Subscription expired\",\"message\":\"Your society's subscription has expired. "
-                            + "Existing data remains viewable, but renew to make changes.\"}"
-            );
-            return;
+        if (society != null) {
+            if (society.getStatus() != SocietyStatus.ACTIVE) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"error\":\"Society inactive\",\"message\":\"Society is not active or suspended. Mutation operations are prohibited.\"}"
+                );
+                return;
+            }
+
+            if (society.getSubscriptionStatus() == SubscriptionStatus.EXPIRED
+                    || society.getSubscriptionStatus() == SubscriptionStatus.PAST_DUE) {
+                response.setStatus(402); // Payment Required
+                response.setContentType("application/json");
+                response.getWriter().write(
+                        "{\"error\":\"Subscription expired\",\"message\":\"Your society's subscription has expired. "
+                                + "Existing data remains viewable, but renew to make changes.\"}"
+                );
+                return;
+            }
         }
 
         filterChain.doFilter(request, response);

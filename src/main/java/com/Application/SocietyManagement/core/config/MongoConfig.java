@@ -36,4 +36,12 @@ public class MongoConfig {
     public MongoTransactionManager transactionManager(MongoDatabaseFactory dbFactory) {
         return new MongoTransactionManager(dbFactory);
     }
+
+    @Bean
+    @org.springframework.context.annotation.Primary
+    public org.springframework.data.mongodb.core.MongoTemplate mongoTemplate(
+            MongoDatabaseFactory mongoDbFactory,
+            org.springframework.data.mongodb.core.convert.MongoConverter converter) {
+        return new com.Application.SocietyManagement.core.tenant.MultiTenantMongoTemplate(mongoDbFactory, converter);
+    }
 }

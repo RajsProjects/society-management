@@ -19,6 +19,9 @@ import java.util.UUID;
 @Order(1)
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
+    private static final java.util.regex.Pattern TRACE_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[a-zA-Z0-9_-]{1,64}$");
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
@@ -29,9 +32,12 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         if (incomingTraceId == null || incomingTraceId.isBlank()) {
             incomingTraceId = request.getHeader("X-Request-Id");
         }
-        String traceId = (incomingTraceId != null && !incomingTraceId.isBlank())
-                ? incomingTraceId.trim()
-                : UUID.randomUUID().toString().substring(0, 8);
+        String traceId;
+        if (incomingTraceId != null && TRACE_ID_PATTERN.matcher(incomingTraceId.trim()).matches()) {
+            traceId = incomingTraceId.trim();
+        } else {
+            traceId = UUID.randomUUID().toString().substring(0, 8);
+        }
 
         long startTime = System.currentTimeMillis();
 

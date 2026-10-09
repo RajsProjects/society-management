@@ -241,7 +241,7 @@ class MaintenanceBillServiceTest {
     // ── payBill tests ──
 
     @Test
-    void payBill_success_marksBillAsPaid() {
+    void payBill_success_marksBillAsPendingVerification() {
         pendingBill.setUserId("resident123");
 
         when(billRepository.findByIdAndSocietyId("bill1", SOCIETY_ID)).thenReturn(Optional.of(pendingBill));
@@ -249,11 +249,57 @@ class MaintenanceBillServiceTest {
 
         Map<String, String> result = billService.payBill("bill1", residentUser, payRequest);
 
-        assertThat(result).containsEntry("message", "Payment successful");
-        assertThat(result).containsEntry("status", "PAID");
-        assertThat(pendingBill.getStatus()).isEqualTo(BillStatus.PAID);
+        assertThat(result).containsEntry("status", "PENDING_VERIFICATION");
+        assertThat(pendingBill.getStatus()).isEqualTo(BillStatus.PENDING_VERIFICATION);
         assertThat(pendingBill.getUpiTransactionId()).isEqualTo("UPI1234567890");
+    }
+
+    @Test
+    void payBill_duplicateTransactionId_throwsConflict() {
+        pendingBill.setUserId("resident123");
+        when(billRepository.findByIdAndSocietyId("bill1", SOCIETY_ID)).thenReturn(Optional.of(pendingBill));
+        when(billRepository.existsByUpiTransactionId("UPI1234567890")).thenReturn(true);
+
+        assertThatThrownBy(() ->
+                billService.payBill("bill1", residentUser, payRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Duplicate submission detected");
+
+        verify(billRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyPayment_success_marksBillAsPaidAndFiresEvent() {
+        pendingBill.setStatus(BillStatus.PENDING_VERIFICATION);
+        pendingBill.setUserId("resident123");
+        pendingBill.setUpiTransactionId("UPI1234567890");
+
+        when(billRepository.findByIdAndSocietyId("bill1", SOCIETY_ID)).thenReturn(Optional.of(pendingBill));
+        when(billRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findById("resident123")).thenReturn(Optional.of(residentUser));
+
+        var dto = billService.verifyPayment("bill1", adminUser);
+
+        assertThat(dto.getStatus()).isEqualTo(BillStatus.PAID);
+        assertThat(pendingBill.getStatus()).isEqualTo(BillStatus.PAID);
+        assertThat(pendingBill.getPaidAt()).isNotNull();
         verify(eventPublisher).publishEvent(any(PaymentSuccessEvent.class));
+    }
+
+    @Test
+    void rejectPayment_success_revertsToPending() {
+        pendingBill.setStatus(BillStatus.PENDING_VERIFICATION);
+        pendingBill.setDueDate(java.time.LocalDate.now().plusDays(5));
+        pendingBill.setUpiTransactionId("UPI1234567890");
+
+        when(billRepository.findByIdAndSocietyId("bill1", SOCIETY_ID)).thenReturn(Optional.of(pendingBill));
+        when(billRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var dto = billService.rejectPayment("bill1", adminUser, "Invalid bank transaction reference");
+
+        assertThat(dto.getStatus()).isEqualTo(BillStatus.PENDING);
+        assertThat(pendingBill.getStatus()).isEqualTo(BillStatus.PENDING);
+        assertThat(pendingBill.getUpiTransactionId()).isNull();
     }
 
     @Test

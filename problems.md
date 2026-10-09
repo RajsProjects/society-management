@@ -203,3 +203,62 @@ Review date: 2026-09-24
 - **Files:** `src/main/resources/application-prod.yml`, `k8s/deployment.yaml`, `k8s/secret-template.yaml`
 - **Problem:** Default port was 8081 while `Dockerfile` exposed 8080. Kubernetes memory limit was 512Mi, risking `OOMKilled` (Exit Code 137) on Java 21. `k8s/secret-template.yaml` lacked `REDIS_PASSWORD`.
 - **Resolution:** Aligned default production port to 8080, increased Kubernetes memory limit to 1024Mi with graceful shutdown enabled, and updated secret templates.
+
+### 28. HIGH - Privilege Escalation via Unrestricted Role Assignment in Invites (CWE-269 / OWASP API5:2023)
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/users/service/InviteService.java`, `src/main/java/com/Application/SocietyManagement/users/controller/AuthController.java`
+- **Problem:** `POST /api/v1/auth/invite` allowed a standard society `ADMIN` to invite users with any role (including `SUPER_ADMIN` or another `ADMIN`). A rogue society admin could invite their own secondary email as `SUPER_ADMIN` to seize platform or elevated controls.
+- **Resolution:** Enforced caller role validation in `InviteService`:
+  - `ADMIN` is strictly restricted to inviting `RESIDENT`, `SECURITY`, or `ACCOUNTANT`.
+  - Only `SUPER_ADMIN` or `PLATFORM_ADMIN` can invite `ADMIN`.
+  - No user can invite `SUPER_ADMIN` via invitations.
+  - Non-administrative users are rejected with HTTP 403 Forbidden.
+
+### 29. HIGH - Join Code Bypass & Unauthorized Public Signup to Private Societies (CWE-306 / OWASP API1:2023)
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/users/service/AuthService.java`, `src/main/java/com/Application/SocietyManagement/users/dto/SignupRequest.java`
+- **Problem:** Public signup `POST /api/v1/auth/signup` permitted clients to supply raw `societyId`, bypassing society secret `joinCode` verification and allowing unauthorized accounts to be registered directly into any active private society. Furthermore, nonexistent `societyId` values caused orphaned records without tenant validation.
+- **Resolution:** Disallowed raw `societyId` on public signups. Enforced that public registrations must present a valid, active society `joinCode` (or resolve through a verified authenticated tenant context). Inactive or non-existent societies throw HTTP 403 Forbidden or HTTP 400 Bad Request.
+
+### 30. HIGH - Financial Fraud: Unverified Payments, Non-Unique UPI Transaction IDs, & Concurrency Double-Spending (CWE-840)
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/finance/entity/MaintenanceBill.java`, `src/main/java/com/Application/SocietyManagement/finance/repository/MaintenanceBillRepository.java`, `src/main/java/com/Application/SocietyManagement/finance/service/MaintenanceBillService.java`, `src/main/java/com/Application/SocietyManagement/finance/controller/FinanceController.java`, `src/main/java/com/Application/SocietyManagement/finance/enums/BillStatus.java`
+- **Problem:** Maintenance bill payments (`POST /api/v1/finance/bills/{id}/pay`) accepted arbitrary client-provided strings as `upiTransactionId` and immediately marked bills as `PAID`. Without unique database indexes or verification, dishonest residents could submit dummy or reused transaction strings to clear debts without bank transfers.
+- **Resolution:**
+  - Added unique sparse index `bill_upi_txn_unique_idx` on `MaintenanceBill.upiTransactionId`.
+  - Added strict regex validation (`^[a-zA-Z0-9_-]{10,50}$`) and duplicate check against `billRepository.existsByUpiTransactionId(...)` (rejecting duplicates with HTTP 409 Conflict).
+  - Implemented distributed locking (`bill:pay:{billId}`) via Redis to eliminate double-spend race conditions.
+  - Introduced `BillStatus.PENDING_VERIFICATION`: resident submissions transition bills to `PENDING_VERIFICATION` rather than immediately clearing debts.
+  - Implemented `POST /api/v1/finance/bills/{id}/verify-payment` and `POST /api/v1/finance/bills/{id}/reject-payment` for authorized Admins and Accountants to audit bank receipts, transition verified bills to `PAID`, record `paidAt` timestamps, and publish `PaymentSuccessEvent`.
+
+### 31. MEDIUM - Sensitive PII Leakage in Flat Directory (CWE-213 / OWASP API3:2023)
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/flat/controller/FlatController.java`, `src/main/java/com/Application/SocietyManagement/flat/service/FlatService.java`, `src/main/java/com/Application/SocietyManagement/flat/dto/FlatResponse.java`
+- **Problem:** `GET /api/v1/flats` and `GET /api/v1/flats/{id}` permitted all residents to view unmasked `ownerEmail` and `ownerPhone` of every unit, enabling scraper harvesting of personal resident PII.
+- **Resolution:** Added field-level authorization and PII masking. If the caller is not an `ADMIN`, `SUPER_ADMIN`, `PLATFORM_ADMIN`, or the flat's registered owner/occupant, personal contact details are systematically masked (`j***@example.com`, `******3210`).
+
+### 32. MEDIUM - Rate Limiting Bypass via Spoofed X-Forwarded-For Headers (CWE-290)
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/core/security/RateLimitingFilter.java`
+- **Problem:** `RateLimitingFilter` blindly trusted the first IP in the `X-Forwarded-For` header. Attackers brute-forcing credentials could spoof arbitrary IP headers on every request to bypass rate limits completely.
+- **Resolution:** Removed blind client-header extraction in favor of `request.getRemoteAddr()`, relying on Spring Boot's internal `server.forward-headers-strategy: framework` to safely resolve client IPs only through trusted upstream proxies.
+
+### 33. LOW - Log Injection & Potential HTTP Response Splitting via Unsanitized Trace IDs (CWE-117 / CWE-113)
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/core/logging/RequestLoggingFilter.java`
+- **Problem:** `RequestLoggingFilter` read `X-Trace-Id` / `X-Request-Id` directly from client requests and injected it into SLF4J MDC and response headers without validation, exposing the system to CRLF log forging and HTTP header splitting.
+- **Resolution:** Added regex validation (`^[a-zA-Z0-9_-]{1,64}$`). Unsanitized or malformed incoming trace headers are discarded, generating a cryptographically secure random UUID substring instead.
+
+### 34. LOW - Incomplete Lifecycle Enforcement for Suspended Societies
+- **Review Date:** 2026-10-08
+- **Commit:** [995262d](https://github.com/RajsProjects/society-management/commit/995262d)
+- **Files:** `src/main/java/com/Application/SocietyManagement/core/security/SubscriptionEnforcementFilter.java`
+- **Problem:** The filter blocked write operations for expired subscriptions but omitted checks on `society.getStatus()`. When a society was marked `SUSPENDED` or `REJECTED`, users with unexpired JWTs could continue modifying society records.
+- **Resolution:** Added explicit checks for `society.getStatus() != SocietyStatus.ACTIVE`, rejecting mutating requests with HTTP 403 Forbidden.
+

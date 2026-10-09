@@ -33,24 +33,22 @@ public class AuthService {
         }
 
         String resolvedSocietyId = null;
-        if (request.getJoinCode() != null && !request.getJoinCode().isBlank() && societyRepository != null) {
-            Society society = societyRepository.findByJoinCode(request.getJoinCode().trim())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid join code"));
-            if (society.getStatus() != SocietyStatus.ACTIVE) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Society is not active");
+        if (request.getJoinCode() != null && !request.getJoinCode().isBlank()) {
+            if (societyRepository != null) {
+                Society society = societyRepository.findByJoinCode(request.getJoinCode().trim())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid join code"));
+                if (society.getStatus() != SocietyStatus.ACTIVE) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Society is not active");
+                }
+                resolvedSocietyId = society.getId();
             }
-            resolvedSocietyId = society.getId();
         } else if (TenantContext.getSocietyId() != null && !TenantContext.getSocietyId().isBlank()) {
             resolvedSocietyId = TenantContext.getSocietyId();
-        } else if (request.getSocietyId() != null && !request.getSocietyId().isBlank()) {
-            if (societyRepository != null) {
-                societyRepository.findById(request.getSocietyId()).ifPresent(soc -> {
-                    if (soc.getStatus() != SocietyStatus.ACTIVE) {
-                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Society is not active");
-                    }
-                });
-            }
-            resolvedSocietyId = request.getSocietyId();
+        } else {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Valid society join code is required for resident registration"
+            );
         }
 
         User user = User.builder()

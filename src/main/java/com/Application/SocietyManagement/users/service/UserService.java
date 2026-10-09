@@ -69,7 +69,9 @@ public class UserService {
     }
 
     public List<UserResponseDto> getAllUsers() {
-        return userRepository.findAll()
+        String societyId = requireSocietyId();
+        return userRepository.findBySocietyId(societyId, Pageable.unpaged())
+                .getContent()
                 .stream()
                 .map(UserResponseDto::from)
                 .toList();

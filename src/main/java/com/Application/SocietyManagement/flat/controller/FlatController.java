@@ -4,6 +4,7 @@ import com.Application.SocietyManagement.flat.dto.CreateFlatRequest;
 import com.Application.SocietyManagement.flat.dto.FlatResponse;
 import com.Application.SocietyManagement.flat.service.FlatService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
+import com.Application.SocietyManagement.users.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -39,16 +41,19 @@ public class FlatController {
             @RequestParam(required = false) String block,
             @RequestParam(required = false) Boolean occupied,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(
-                flatService.getAll(block, occupied, page, size));
+                flatService.getAll(block, occupied, page, size, currentUser));
     }
 
     @Operation(summary = "Get flat by ID")
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'RESIDENT')")
-    public ResponseEntity<FlatResponse> getById(@PathVariable String id) {
-        return ResponseEntity.ok(flatService.getById(id));
+    public ResponseEntity<FlatResponse> getById(
+            @PathVariable String id,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(flatService.getById(id, currentUser));
     }
 
     @Operation(summary = "Update flat",

@@ -34,7 +34,7 @@ public class MongoIndexInitializer implements ApplicationRunner {
                     IndexOperations indexOps = mongoTemplate.indexOps(type);
                     for (var index : resolver.resolveIndexFor(type)) {
                         try {
-                            indexOps.ensureIndex(index);
+                            indexOps.createIndex(index);
                         } catch (Exception e) {
                             log.warn("Index check/creation warning for {}: {}", type.getSimpleName(), e.getMessage());
                         }

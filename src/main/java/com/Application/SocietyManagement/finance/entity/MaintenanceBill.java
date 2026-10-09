@@ -17,7 +17,8 @@ import java.time.LocalDate;
         @CompoundIndex(def = "{'societyId': 1, 'userId': 1, 'status': 1, 'createdAt': -1}", name = "bill_society_user_status_idx"),
         @CompoundIndex(def = "{'societyId': 1, 'status': 1, 'createdAt': -1}", name = "bill_society_status_idx"),
         @CompoundIndex(def = "{'societyId': 1, 'createdAt': -1}", name = "bill_society_created_idx"),
-        @CompoundIndex(def = "{'status': 1, 'dueDate': 1}", name = "bill_status_duedate_idx")
+        @CompoundIndex(def = "{'status': 1, 'dueDate': 1}", name = "bill_status_duedate_idx"),
+        @CompoundIndex(def = "{'upiTransactionId': 1}", unique = true, sparse = true, name = "bill_upi_txn_unique_idx")
 })
 @Builder
 @Getter
@@ -34,5 +35,6 @@ public class MaintenanceBill extends BaseEntity {
     private BillStatus status = BillStatus.PENDING;
 
     private String upiTransactionId;
+    private java.time.Instant paidAt;
     private String societyId;
 }

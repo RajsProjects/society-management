@@ -73,7 +73,7 @@ public class AuthController {
             @RequestBody @Valid InviteRequest request,
             @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(
-                inviteService.invite(request, currentUser.getId()));
+                inviteService.invite(request, currentUser));
     }
 
     @Operation(summary = "Accept invite",

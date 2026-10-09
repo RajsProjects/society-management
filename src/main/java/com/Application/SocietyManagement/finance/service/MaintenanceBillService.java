@@ -124,9 +124,13 @@ public class MaintenanceBillService {
         return MaintenanceBillDto.from(bill);
     }
 
+    private static final java.util.regex.Pattern UPI_TXN_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9_-]{10,50}$");
+
     public Map<String, String> payBill(String billId, User currentUser,
                                        PayBillRequest request) {
-        MaintenanceBill bill = billRepository.findByIdAndSocietyId(billId, requireSocietyId())
+        String societyId = requireSocietyId();
+        MaintenanceBill bill = billRepository.findByIdAndSocietyId(billId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Bill not found"));
 
@@ -141,6 +145,11 @@ public class MaintenanceBillService {
                     HttpStatus.CONFLICT, "Bill is already paid");
         }
 
+        if (bill.getStatus() == BillStatus.PENDING_VERIFICATION) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Payment reference is already submitted and pending verification");
+        }
+
         if (bill.getStatus() == BillStatus.OVERDUE) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "Overdue bills require admin intervention");
@@ -152,17 +161,88 @@ public class MaintenanceBillService {
                     HttpStatus.BAD_REQUEST, "Only full payments are accepted");
         }
 
+        // Strict Financial Fraud Prevention: Transaction ID format & anti-spoofing
+        String txnId = request.getUpiTransactionId() != null ? request.getUpiTransactionId().trim() : "";
+        if (!UPI_TXN_PATTERN.matcher(txnId).matches()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid UPI transaction reference. Must be a valid 10-50 alphanumeric reference number.");
+        }
+
+        // Anti-Fraud: duplicate transaction prevention across all society bills
+        if (billRepository.existsByUpiTransactionId(txnId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "This transaction reference has already been submitted for another payment. Duplicate submission detected.");
+        }
+
+        // Concurrency lock: prevent race conditions on payment processing
+        String lockKey = "bill:pay:" + billId;
+        boolean locked = lockService == null || lockService.tryLock(lockKey, java.time.Duration.ofSeconds(15));
+        if (!locked) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Payment processing already in progress for this bill. Please wait.");
+        }
+
+        try {
+            bill.setStatus(BillStatus.PENDING_VERIFICATION);
+            bill.setUpiTransactionId(txnId);
+            billRepository.save(bill);
+
+            return Map.of(
+                    "message", "Payment reference submitted successfully. Verification pending by management.",
+                    "status", BillStatus.PENDING_VERIFICATION.name(),
+                    "upiTransactionId", txnId
+            );
+        } finally {
+            if (lockService != null) {
+                lockService.releaseLock(lockKey);
+            }
+        }
+    }
+
+    public MaintenanceBillDto verifyPayment(String billId, User currentUser) {
+        String societyId = requireSocietyId();
+        MaintenanceBill bill = billRepository.findByIdAndSocietyId(billId, societyId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Bill not found"));
+
+        if (bill.getStatus() != BillStatus.PENDING_VERIFICATION) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Bill is not awaiting verification (current status: " + bill.getStatus() + ")");
+        }
+
         bill.setStatus(BillStatus.PAID);
-        bill.setUpiTransactionId(request.getUpiTransactionId());
-        billRepository.save(bill);
+        bill.setPaidAt(java.time.Instant.now());
+        MaintenanceBill saved = billRepository.save(bill);
 
-        // fire event — email sends async, does not block API response
-        eventPublisher.publishEvent(new PaymentSuccessEvent(this, bill, currentUser));
+        User resident = userRepository.findById(saved.getUserId()).orElse(null);
+        eventPublisher.publishEvent(new PaymentSuccessEvent(this, saved, resident));
 
-        return Map.of(
-                "message", "Payment successful",
-                "status", "PAID"
-        );
+        return MaintenanceBillDto.from(saved);
+    }
+
+    public MaintenanceBillDto rejectPayment(String billId, User currentUser, String rejectionReason) {
+        String societyId = requireSocietyId();
+        MaintenanceBill bill = billRepository.findByIdAndSocietyId(billId, societyId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Bill not found"));
+
+        if (bill.getStatus() != BillStatus.PENDING_VERIFICATION) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Bill is not awaiting verification (current status: " + bill.getStatus() + ")");
+        }
+
+        BillStatus revertedStatus = bill.getDueDate().isBefore(LocalDate.now()) ? BillStatus.OVERDUE : BillStatus.PENDING;
+        bill.setStatus(revertedStatus);
+        bill.setUpiTransactionId(null);
+        MaintenanceBill saved = billRepository.save(bill);
+
+        log.warn("Payment rejected for bill {} by user {}. Reason: {}. Reverted to status: {}",
+                billId, currentUser.getEmail(), rejectionReason, revertedStatus);
+
+        return MaintenanceBillDto.from(saved);
     }
 
     // runs at midnight UTC every day
