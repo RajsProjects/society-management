@@ -51,6 +51,13 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
     }
 
     @Override
+    public <T> T findById(Object id, Class<T> entityClass, String collectionName) {
+        Query query = new Query(Criteria.where("_id").is(id));
+        applyTenantFilter(query, entityClass, collectionName);
+        return findOne(query, entityClass, collectionName);
+    }
+
+    @Override
     public <T> T findOne(Query query, Class<T> entityClass, String collectionName) {
         applyTenantFilter(query, entityClass, collectionName);
         return super.findOne(query, entityClass, collectionName);
@@ -148,7 +155,7 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
 
     // ── TENANT ENGINE INTERNALS ──
 
-    private void applyTenantFilter(Query query, Class<?> entityClass, String collectionName) {
+    void applyTenantFilter(Query query, Class<?> entityClass, String collectionName) {
         if (query == null || !isTenantScoped(entityClass, collectionName)) {
             return;
         }
@@ -175,7 +182,7 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
         query.addCriteria(Criteria.where(TENANT_KEY).is(tenantId));
     }
 
-    private void enforceTenantOnEntity(Object entity, String collectionName) {
+    void enforceTenantOnEntity(Object entity, String collectionName) {
         if (entity == null || !isTenantScoped(entity.getClass(), collectionName)) {
             return;
         }
@@ -207,7 +214,8 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
         }
     }
 
-    private Aggregation injectTenantToAggregation(Aggregation aggregation, String tenantId) {
+    Aggregation injectTenantToAggregation(Aggregation aggregation, String tenantId) {
+        validateAggregationPipeline(aggregation, tenantId);
         List<AggregationOperation> operations = new ArrayList<>();
         operations.add(Aggregation.match(Criteria.where(TENANT_KEY).is(tenantId)));
         operations.addAll(aggregation.getPipeline().getOperations());
@@ -215,11 +223,50 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
     }
 
     @SuppressWarnings("unchecked")
-    private <T> TypedAggregation<T> injectTenantToTypedAggregation(TypedAggregation<T> aggregation, String tenantId) {
+    <T> TypedAggregation<T> injectTenantToTypedAggregation(TypedAggregation<T> aggregation, String tenantId) {
+        validateAggregationPipeline(aggregation, tenantId);
         List<AggregationOperation> operations = new ArrayList<>();
         operations.add(Aggregation.match(Criteria.where(TENANT_KEY).is(tenantId)));
         operations.addAll(aggregation.getPipeline().getOperations());
         return (TypedAggregation<T>) Aggregation.newAggregation(aggregation.getInputType(), operations);
+    }
+
+    void validateAggregationPipeline(Aggregation aggregation, String tenantId) {
+        for (AggregationOperation op : aggregation.getPipeline().getOperations()) {
+            Document doc = op.toDocument(Aggregation.DEFAULT_CONTEXT);
+            if (doc.containsKey("$match")) {
+                Document matchDoc = doc.get("$match", Document.class);
+                if (matchDoc != null && matchDoc.containsKey(TENANT_KEY)) {
+                    Object val = matchDoc.get(TENANT_KEY);
+                    if (val instanceof String strVal && !strVal.equals(tenantId)) {
+                        throw new AccessDeniedException(
+                                "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
+                                        + " but authenticated tenant is " + tenantId);
+                    }
+                }
+            }
+            if (doc.containsKey("$lookup")) {
+                Document lookupDoc = doc.get("$lookup", Document.class);
+                if (lookupDoc != null && lookupDoc.containsKey("pipeline")) {
+                    List<?> subPipeline = lookupDoc.get("pipeline", List.class);
+                    if (subPipeline != null) {
+                        for (Object stage : subPipeline) {
+                            if (stage instanceof Document stageDoc && stageDoc.containsKey("$match")) {
+                                Document subMatch = stageDoc.get("$match", Document.class);
+                                if (subMatch != null && subMatch.containsKey(TENANT_KEY)) {
+                                    Object val = subMatch.get(TENANT_KEY);
+                                    if (val instanceof String strVal && !strVal.equals(tenantId)) {
+                                        throw new AccessDeniedException(
+                                                "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
+                                                        + " but authenticated tenant is " + tenantId);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private boolean isTenantScoped(Class<?> entityClass, String collectionName) {
