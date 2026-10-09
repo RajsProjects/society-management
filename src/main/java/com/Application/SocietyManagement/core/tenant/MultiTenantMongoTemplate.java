@@ -222,43 +222,43 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
         return Aggregation.newAggregation(operations);
     }
 
-    @SuppressWarnings("unchecked")
     <T> TypedAggregation<T> injectTenantToTypedAggregation(TypedAggregation<T> aggregation, String tenantId) {
         validateAggregationPipeline(aggregation, tenantId);
         List<AggregationOperation> operations = new ArrayList<>();
         operations.add(Aggregation.match(Criteria.where(TENANT_KEY).is(tenantId)));
         operations.addAll(aggregation.getPipeline().getOperations());
-        return (TypedAggregation<T>) Aggregation.newAggregation(aggregation.getInputType(), operations);
+        return Aggregation.newAggregation(aggregation.getInputType(), operations);
     }
 
     void validateAggregationPipeline(Aggregation aggregation, String tenantId) {
         for (AggregationOperation op : aggregation.getPipeline().getOperations()) {
-            Document doc = op.toDocument(Aggregation.DEFAULT_CONTEXT);
-            if (doc.containsKey("$match")) {
-                Document matchDoc = doc.get("$match", Document.class);
-                if (matchDoc != null && matchDoc.containsKey(TENANT_KEY)) {
-                    Object val = matchDoc.get(TENANT_KEY);
-                    if (val instanceof String strVal && !strVal.equals(tenantId)) {
-                        throw new AccessDeniedException(
-                                "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
-                                        + " but authenticated tenant is " + tenantId);
+            for (Document doc : op.toPipelineStages(Aggregation.DEFAULT_CONTEXT)) {
+                if (doc.containsKey("$match")) {
+                    Document matchDoc = doc.get("$match", Document.class);
+                    if (matchDoc != null && matchDoc.containsKey(TENANT_KEY)) {
+                        Object val = matchDoc.get(TENANT_KEY);
+                        if (val instanceof String strVal && !strVal.equals(tenantId)) {
+                            throw new AccessDeniedException(
+                                    "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
+                                            + " but authenticated tenant is " + tenantId);
+                        }
                     }
                 }
-            }
-            if (doc.containsKey("$lookup")) {
-                Document lookupDoc = doc.get("$lookup", Document.class);
-                if (lookupDoc != null && lookupDoc.containsKey("pipeline")) {
-                    List<?> subPipeline = lookupDoc.get("pipeline", List.class);
-                    if (subPipeline != null) {
-                        for (Object stage : subPipeline) {
-                            if (stage instanceof Document stageDoc && stageDoc.containsKey("$match")) {
-                                Document subMatch = stageDoc.get("$match", Document.class);
-                                if (subMatch != null && subMatch.containsKey(TENANT_KEY)) {
-                                    Object val = subMatch.get(TENANT_KEY);
-                                    if (val instanceof String strVal && !strVal.equals(tenantId)) {
-                                        throw new AccessDeniedException(
-                                                "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
-                                                        + " but authenticated tenant is " + tenantId);
+                if (doc.containsKey("$lookup")) {
+                    Document lookupDoc = doc.get("$lookup", Document.class);
+                    if (lookupDoc != null && lookupDoc.containsKey("pipeline")) {
+                        List<?> subPipeline = lookupDoc.get("pipeline", List.class);
+                        if (subPipeline != null) {
+                            for (Object stage : subPipeline) {
+                                if (stage instanceof Document stageDoc && stageDoc.containsKey("$match")) {
+                                    Document subMatch = stageDoc.get("$match", Document.class);
+                                    if (subMatch != null && subMatch.containsKey(TENANT_KEY)) {
+                                        Object val = subMatch.get(TENANT_KEY);
+                                        if (val instanceof String strVal && !strVal.equals(tenantId)) {
+                                            throw new AccessDeniedException(
+                                                    "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
+                                                            + " but authenticated tenant is " + tenantId);
+                                        }
                                     }
                                 }
                             }

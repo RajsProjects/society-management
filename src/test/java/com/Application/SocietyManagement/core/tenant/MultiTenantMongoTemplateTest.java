@@ -3,7 +3,6 @@ package com.Application.SocietyManagement.core.tenant;
 import com.Application.SocietyManagement.complaint.entity.Complaint;
 import com.Application.SocietyManagement.core.config.AsyncConfig;
 import com.Application.SocietyManagement.society.entity.Society;
-import com.Application.SocietyManagement.users.entity.User;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +16,6 @@ import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -245,7 +243,7 @@ class MultiTenantMongoTemplateTest {
         Aggregation safeAgg = template.injectTenantToAggregation(agg, "soc-alpha");
 
         Document firstStage = safeAgg.getPipeline().getOperations().get(0)
-                .toDocument(Aggregation.DEFAULT_CONTEXT);
+                .toPipelineStages(Aggregation.DEFAULT_CONTEXT).get(0);
         assertThat(firstStage.containsKey("$match")).isTrue();
         Document matchDoc = firstStage.get("$match", Document.class);
         assertThat(matchDoc.get("societyId")).isEqualTo("soc-alpha");
