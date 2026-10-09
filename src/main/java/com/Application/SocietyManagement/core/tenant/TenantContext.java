@@ -16,4 +16,32 @@ public class TenantContext {
     public static void clear() {
         CURRENT_SOCIETY.remove();
     }
+
+    public static void runAsTenant(String societyId, Runnable action) {
+        String previous = getSocietyId();
+        try {
+            setSocietyId(societyId);
+            action.run();
+        } finally {
+            if (previous != null) {
+                setSocietyId(previous);
+            } else {
+                clear();
+            }
+        }
+    }
+
+    public static <T> T callAsTenant(String societyId, java.util.concurrent.Callable<T> action) throws Exception {
+        String previous = getSocietyId();
+        try {
+            setSocietyId(societyId);
+            return action.call();
+        } finally {
+            if (previous != null) {
+                setSocietyId(previous);
+            } else {
+                clear();
+            }
+        }
+    }
 }
