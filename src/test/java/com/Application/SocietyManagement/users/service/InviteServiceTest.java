@@ -120,6 +120,7 @@ class InviteServiceTest {
                 .build();
 
         when(inviteTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(token));
+        when(userRepository.findByEmail("newresident@example.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("Password123!")).thenReturn("hashed-pwd");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-mock-token");
@@ -127,6 +128,7 @@ class InviteServiceTest {
         AcceptInviteRequest acceptReq = new AcceptInviteRequest();
         acceptReq.setToken("valid-token");
         acceptReq.setPassword("Password123!");
+        acceptReq.setPhone("9876543210");
         acceptReq.setFirstName("Alice");
         acceptReq.setLastName("Wonderland");
 
@@ -188,6 +190,31 @@ class InviteServiceTest {
         assertThatThrownBy(() -> inviteService.acceptInvite(acceptReq))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Invite token has expired");
+    }
+
+    @Test
+    @DisplayName("acceptInvite - throws 409 when user email is already registered")
+    void acceptInvite_emailAlreadyRegistered_throwsConflict() {
+        InviteToken token = InviteToken.builder()
+                .token("valid-token")
+                .email("existing@example.com")
+                .role(Roles.RESIDENT)
+                .expiresAt(Instant.now().plus(24, ChronoUnit.HOURS))
+                .used(false)
+                .build();
+
+        when(inviteTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(token));
+        when(userRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(new User()));
+
+        AcceptInviteRequest acceptReq = new AcceptInviteRequest();
+        acceptReq.setToken("valid-token");
+        acceptReq.setPassword("Password123!");
+        acceptReq.setFirstName("Bob");
+        acceptReq.setLastName("Builder");
+
+        assertThatThrownBy(() -> inviteService.acceptInvite(acceptReq))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Email is already registered");
     }
 
     @Test

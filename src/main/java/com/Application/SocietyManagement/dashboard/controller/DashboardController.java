@@ -32,6 +32,7 @@ public class DashboardController {
     private final FlatRepository flatRepository;
     private final MaintenanceBillRepository billRepository;
     private final IssueRepository issueRepository;
+    private final org.springframework.core.task.TaskExecutor taskExecutor;
 
     @Operation(summary = "Get dashboard stats",
             description = "Returns all dashboard statistics. Admin only.")
@@ -41,29 +42,29 @@ public class DashboardController {
         String societyId = TenantContext.getSocietyId();
 
         java.util.concurrent.CompletableFuture<Long> totalResidents = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> userRepository.countBySocietyIdAndRole(societyId, Roles.RESIDENT));
+                () -> userRepository.countBySocietyIdAndRole(societyId, Roles.RESIDENT), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> pendingApprovals = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> userRepository.countBySocietyIdAndStatus(societyId, Status.PENDING));
+                () -> userRepository.countBySocietyIdAndStatus(societyId, Status.PENDING), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> totalFlats = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> flatRepository.countBySocietyId(societyId));
+                () -> flatRepository.countBySocietyId(societyId), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> occupiedFlats = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> flatRepository.countBySocietyIdAndOccupied(societyId, true));
+                () -> flatRepository.countBySocietyIdAndOccupied(societyId, true), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> openComplaints = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.OPEN));
+                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.OPEN), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> inProgressComplaints = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.IN_PROGRESS));
+                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.IN_PROGRESS), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> resolvedComplaints = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.RESOLVED));
+                () -> complaintRepository.countBySocietyIdAndStatus(societyId, ComplaintStatus.RESOLVED), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> totalBills = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> billRepository.countBySocietyId(societyId));
+                () -> billRepository.countBySocietyId(societyId), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> paidBills = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> billRepository.countBySocietyIdAndStatus(societyId, BillStatus.PAID));
+                () -> billRepository.countBySocietyIdAndStatus(societyId, BillStatus.PAID), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> overdueBills = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> billRepository.countBySocietyIdAndStatus(societyId, BillStatus.OVERDUE));
+                () -> billRepository.countBySocietyIdAndStatus(societyId, BillStatus.OVERDUE), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> openIssues = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> issueRepository.countBySocietyIdAndStatus(societyId, IssueStatus.OPEN));
+                () -> issueRepository.countBySocietyIdAndStatus(societyId, IssueStatus.OPEN), taskExecutor);
         java.util.concurrent.CompletableFuture<Long> resolvedIssues = java.util.concurrent.CompletableFuture.supplyAsync(
-                () -> issueRepository.countBySocietyIdAndStatus(societyId, IssueStatus.RESOLVED));
+                () -> issueRepository.countBySocietyIdAndStatus(societyId, IssueStatus.RESOLVED), taskExecutor);
 
         java.util.concurrent.CompletableFuture.allOf(
                 totalResidents, pendingApprovals, totalFlats, occupiedFlats,

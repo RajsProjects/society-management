@@ -203,7 +203,7 @@ public class SocietyService {
                     "This society is not active");
         }
 
-        return SocietyResponse.from(society);
+        return SocietyResponse.forPublicJoin(society);
     }
 
     // ── Platform Admin: List all societies ──

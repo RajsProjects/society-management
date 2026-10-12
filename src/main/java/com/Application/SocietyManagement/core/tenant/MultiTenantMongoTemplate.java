@@ -133,7 +133,7 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
 
     @Override
     public <O> AggregationResults<O> aggregate(Aggregation aggregation, String collectionName, Class<O> outputType) {
-        if (isTenantScoped(null, collectionName)) {
+        if (isTenantScoped(null, collectionName) && !isPlatformAdmin()) {
             String tenantId = TenantContext.getSocietyId();
             if (tenantId != null && !tenantId.isBlank()) {
                 aggregation = injectTenantToAggregation(aggregation, tenantId);
@@ -144,7 +144,7 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
 
     @Override
     public <O> AggregationResults<O> aggregate(TypedAggregation<?> aggregation, String collectionName, Class<O> outputType) {
-        if (isTenantScoped(aggregation.getInputType(), collectionName)) {
+        if (isTenantScoped(aggregation.getInputType(), collectionName) && !isPlatformAdmin()) {
             String tenantId = TenantContext.getSocietyId();
             if (tenantId != null && !tenantId.isBlank()) {
                 aggregation = injectTenantToTypedAggregation(aggregation, tenantId);
@@ -158,6 +158,10 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
     void applyTenantFilter(Query query, Class<?> entityClass, String collectionName) {
         if (query == null || !isTenantScoped(entityClass, collectionName)) {
             return;
+        }
+
+        if (isPlatformAdmin()) {
+            return; // Platform admins have global oversight
         }
 
         String tenantId = TenantContext.getSocietyId();
@@ -174,16 +178,42 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
                             "Cross-tenant query violation: Query target " + existingStr
                                     + " does not match authenticated tenant " + tenantId);
                 }
+                return;
+            } else if (existingValue instanceof Document doc) {
+                if (doc.containsKey("$eq")) {
+                    Object eqVal = doc.get("$eq");
+                    if (!Objects.equals(eqVal, tenantId)) {
+                        throw new AccessDeniedException(
+                                "Cross-tenant query violation: Target $eq " + eqVal
+                                        + " does not match authenticated tenant " + tenantId);
+                    }
+                    return;
+                }
+                throw new AccessDeniedException(
+                        "Cross-tenant query violation: Prohibited operator in tenant criteria: " + doc.keySet());
+            } else {
+                throw new AccessDeniedException(
+                        "Cross-tenant query violation: Prohibited filter type: " + existingValue.getClass().getSimpleName());
             }
-            return;
         }
 
         // Automatically append tenant isolation criteria
         query.addCriteria(Criteria.where(TENANT_KEY).is(tenantId));
     }
 
+    private boolean isPlatformAdmin() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_PLATFORM_ADMIN"));
+    }
+
     void enforceTenantOnEntity(Object entity, String collectionName) {
         if (entity == null || !isTenantScoped(entity.getClass(), collectionName)) {
+            return;
+        }
+
+        if (isPlatformAdmin()) {
             return;
         }
 

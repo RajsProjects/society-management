@@ -137,9 +137,15 @@ public class InviteService {
                     HttpStatus.GONE, "Invite token has expired");
         }
 
+        if (userRepository.findByEmail(invite.getEmail()).isPresent()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Email is already registered");
+        }
+
         // create the user
         User user = User.builder()
                 .email(invite.getEmail())
+                .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
