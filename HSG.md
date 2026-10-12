@@ -536,12 +536,15 @@ All 6 identified vulnerabilities were resolved and verified across the codebase:
 ---
 
 ### 9.3. Verification & Test Suite Results
-* Full test suite executed with zero regressions.
-* Verified security edge cases:
-  * Non-string query injection rejection in `MultiTenantMongoTemplate`
-  * Nullified sensitive fields in `SocietyServiceTest.getByJoinCode`
-  * Conflict exception and phone ingestion in `InviteServiceTest`
-  * Synchronous task execution verification in `DashboardControllerTest`
+* Full test suite executed with zero regressions: **217 / 217 tests passed (0 failures, 0 errors)**.
+* **Adversarial & Penetration Tests (26 / 26 passed in `MultiTenantMongoTemplateTest`):**
+  1. `penetrationTest_noSqlOperatorInjection_inQuery_throwsAccessDenied`: Validated that `$ne`, `$exists`, `$regex`, and `$in` queries against `societyId` are blocked with `AccessDeniedException: Prohibited operator in tenant criteria`.
+  2. `penetrationTest_noSqlOperatorInjection_inAggregationMatch_throwsAccessDenied`: Validated that pipeline `$match` on `societyId` with non-string criteria throws `AccessDeniedException`.
+  3. `penetrationTest_noSqlOperatorInjection_inLookupSubpipeline_throwsAccessDenied`: Validated that `$lookup` subpipelines cannot smuggle non-string `societyId` operators.
+  4. `penetrationTest_platformAdmin_allowedCrossTenant_regularAdminBlocked`: Validated that `ROLE_ADMIN` cannot perform cross-tenant queries, while `ROLE_PLATFORM_ADMIN` executes cross-tenant operations safely.
+  5. Sanitized public join endpoint: Verified confidential fields (`documentUrl`, `plan`, `subscriptionStatus`) are nullified in `SocietyServiceTest`.
+  6. Invite acceptance: Verified email conflict protection (409) and phone ingestion in `InviteServiceTest`.
+  7. Concurrency: Verified thread context propagation via managed `TaskExecutor` in `DashboardControllerTest`.
 
 
 
