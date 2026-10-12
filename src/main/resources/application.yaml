@@ -119,3 +119,9 @@ platform:
   admin:
     email: ${PLATFORM_ADMIN_EMAIL:admin@civiclink.local}
     password: ${PLATFORM_ADMIN_PASSWORD:ChangeMe123!}
+
+subscription:
+  enforcement:
+    enabled: false
+  scheduler:
+    enabled: false

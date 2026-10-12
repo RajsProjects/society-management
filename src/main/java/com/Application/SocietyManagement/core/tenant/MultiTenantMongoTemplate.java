@@ -133,7 +133,7 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
 
     @Override
     public <O> AggregationResults<O> aggregate(Aggregation aggregation, String collectionName, Class<O> outputType) {
-        if (isTenantScoped(null, collectionName)) {
+        if (isTenantScoped(null, collectionName) && !isPlatformAdmin()) {
             String tenantId = TenantContext.getSocietyId();
             if (tenantId != null && !tenantId.isBlank()) {
                 aggregation = injectTenantToAggregation(aggregation, tenantId);
@@ -144,7 +144,7 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
 
     @Override
     public <O> AggregationResults<O> aggregate(TypedAggregation<?> aggregation, String collectionName, Class<O> outputType) {
-        if (isTenantScoped(aggregation.getInputType(), collectionName)) {
+        if (isTenantScoped(aggregation.getInputType(), collectionName) && !isPlatformAdmin()) {
             String tenantId = TenantContext.getSocietyId();
             if (tenantId != null && !tenantId.isBlank()) {
                 aggregation = injectTenantToTypedAggregation(aggregation, tenantId);
@@ -158,6 +158,10 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
     void applyTenantFilter(Query query, Class<?> entityClass, String collectionName) {
         if (query == null || !isTenantScoped(entityClass, collectionName)) {
             return;
+        }
+
+        if (isPlatformAdmin()) {
+            return; // Platform admins have global oversight
         }
 
         String tenantId = TenantContext.getSocietyId();
@@ -174,16 +178,42 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
                             "Cross-tenant query violation: Query target " + existingStr
                                     + " does not match authenticated tenant " + tenantId);
                 }
+                return;
+            } else if (existingValue instanceof Document doc) {
+                if (doc.containsKey("$eq")) {
+                    Object eqVal = doc.get("$eq");
+                    if (!Objects.equals(eqVal, tenantId)) {
+                        throw new AccessDeniedException(
+                                "Cross-tenant query violation: Target $eq " + eqVal
+                                        + " does not match authenticated tenant " + tenantId);
+                    }
+                    return;
+                }
+                throw new AccessDeniedException(
+                        "Cross-tenant query violation: Prohibited operator in tenant criteria: " + doc.keySet());
+            } else {
+                throw new AccessDeniedException(
+                        "Cross-tenant query violation: Prohibited filter type: " + existingValue.getClass().getSimpleName());
             }
-            return;
         }
 
         // Automatically append tenant isolation criteria
         query.addCriteria(Criteria.where(TENANT_KEY).is(tenantId));
     }
 
+    private boolean isPlatformAdmin() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_PLATFORM_ADMIN"));
+    }
+
     void enforceTenantOnEntity(Object entity, String collectionName) {
         if (entity == null || !isTenantScoped(entity.getClass(), collectionName)) {
+            return;
+        }
+
+        if (isPlatformAdmin()) {
             return;
         }
 
@@ -222,43 +252,53 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
         return Aggregation.newAggregation(operations);
     }
 
-    @SuppressWarnings("unchecked")
     <T> TypedAggregation<T> injectTenantToTypedAggregation(TypedAggregation<T> aggregation, String tenantId) {
         validateAggregationPipeline(aggregation, tenantId);
         List<AggregationOperation> operations = new ArrayList<>();
         operations.add(Aggregation.match(Criteria.where(TENANT_KEY).is(tenantId)));
         operations.addAll(aggregation.getPipeline().getOperations());
-        return (TypedAggregation<T>) Aggregation.newAggregation(aggregation.getInputType(), operations);
+        return Aggregation.newAggregation(aggregation.getInputType(), operations);
     }
 
     void validateAggregationPipeline(Aggregation aggregation, String tenantId) {
         for (AggregationOperation op : aggregation.getPipeline().getOperations()) {
-            Document doc = op.toDocument(Aggregation.DEFAULT_CONTEXT);
-            if (doc.containsKey("$match")) {
-                Document matchDoc = doc.get("$match", Document.class);
-                if (matchDoc != null && matchDoc.containsKey(TENANT_KEY)) {
-                    Object val = matchDoc.get(TENANT_KEY);
-                    if (val instanceof String strVal && !strVal.equals(tenantId)) {
-                        throw new AccessDeniedException(
-                                "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
-                                        + " but authenticated tenant is " + tenantId);
+            for (Document doc : op.toPipelineStages(Aggregation.DEFAULT_CONTEXT)) {
+                if (doc.containsKey("$match")) {
+                    Document matchDoc = doc.get("$match", Document.class);
+                    if (matchDoc != null && matchDoc.containsKey(TENANT_KEY)) {
+                        Object val = matchDoc.get(TENANT_KEY);
+                        if (val instanceof String strVal) {
+                            if (!strVal.equals(tenantId)) {
+                                throw new AccessDeniedException(
+                                        "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
+                                                + " but authenticated tenant is " + tenantId);
+                            }
+                        } else {
+                            throw new AccessDeniedException(
+                                    "Cross-tenant aggregation violation: Pipeline $match on societyId must be an exact string match");
+                        }
                     }
                 }
-            }
-            if (doc.containsKey("$lookup")) {
-                Document lookupDoc = doc.get("$lookup", Document.class);
-                if (lookupDoc != null && lookupDoc.containsKey("pipeline")) {
-                    List<?> subPipeline = lookupDoc.get("pipeline", List.class);
-                    if (subPipeline != null) {
-                        for (Object stage : subPipeline) {
-                            if (stage instanceof Document stageDoc && stageDoc.containsKey("$match")) {
-                                Document subMatch = stageDoc.get("$match", Document.class);
-                                if (subMatch != null && subMatch.containsKey(TENANT_KEY)) {
-                                    Object val = subMatch.get(TENANT_KEY);
-                                    if (val instanceof String strVal && !strVal.equals(tenantId)) {
-                                        throw new AccessDeniedException(
-                                                "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
-                                                        + " but authenticated tenant is " + tenantId);
+                if (doc.containsKey("$lookup")) {
+                    Document lookupDoc = doc.get("$lookup", Document.class);
+                    if (lookupDoc != null && lookupDoc.containsKey("pipeline")) {
+                        List<?> subPipeline = lookupDoc.get("pipeline", List.class);
+                        if (subPipeline != null) {
+                            for (Object stage : subPipeline) {
+                                if (stage instanceof Document stageDoc && stageDoc.containsKey("$match")) {
+                                    Document subMatch = stageDoc.get("$match", Document.class);
+                                    if (subMatch != null && subMatch.containsKey(TENANT_KEY)) {
+                                        Object val = subMatch.get(TENANT_KEY);
+                                        if (val instanceof String strVal) {
+                                            if (!strVal.equals(tenantId)) {
+                                                throw new AccessDeniedException(
+                                                        "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
+                                                                + " but authenticated tenant is " + tenantId);
+                                            }
+                                        } else {
+                                            throw new AccessDeniedException(
+                                                    "Cross-tenant lookup violation: Sub-pipeline $match on societyId must be an exact string match");
+                                        }
                                     }
                                 }
                             }

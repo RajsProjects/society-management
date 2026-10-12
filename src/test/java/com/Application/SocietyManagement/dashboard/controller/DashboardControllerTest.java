@@ -47,6 +47,9 @@ class DashboardControllerTest {
     @Mock
     private IssueRepository issueRepository;
 
+    @Mock
+    private org.springframework.core.task.TaskExecutor taskExecutor;
+
     @InjectMocks
     private DashboardController dashboardController;
 
@@ -55,6 +58,10 @@ class DashboardControllerTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }).when(taskExecutor).execute(org.mockito.ArgumentMatchers.any(Runnable.class));
         mockMvc = MockMvcBuilders.standaloneSetup(dashboardController).build();
         TenantContext.setSocietyId(SOCIETY_ID);
     }

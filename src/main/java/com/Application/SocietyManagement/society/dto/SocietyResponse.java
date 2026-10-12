@@ -54,4 +54,18 @@ public class SocietyResponse {
                 .createdAt(society.getCreatedAt())
                 .build();
     }
+
+    public static SocietyResponse forPublicJoin(Society society) {
+        return SocietyResponse.builder()
+                .id(society.getId())
+                .name(society.getName())
+                .address(society.getAddress())
+                .city(society.getCity())
+                .state(society.getState())
+                .pincode(society.getPincode())
+                .totalFlats(society.getTotalFlats())
+                .status(society.getStatus())
+                .joinCode(society.getJoinCode())
+                .build();
+    }
 }

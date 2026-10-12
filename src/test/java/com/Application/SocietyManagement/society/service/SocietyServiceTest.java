@@ -325,6 +325,9 @@ class SocietyServiceTest {
             assertThat(response).isNotNull();
             assertThat(response.getName()).isEqualTo("Green Heights");
             assertThat(response.getJoinCode()).isEqualTo(JOIN_CODE);
+            assertThat(response.getDocumentUrl()).isNull();
+            assertThat(response.getPlan()).isNull();
+            assertThat(response.getSubscriptionStatus()).isNull();
         }
     }
 

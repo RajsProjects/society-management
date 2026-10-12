@@ -3,7 +3,6 @@ package com.Application.SocietyManagement.core.tenant;
 import com.Application.SocietyManagement.complaint.entity.Complaint;
 import com.Application.SocietyManagement.core.config.AsyncConfig;
 import com.Application.SocietyManagement.society.entity.Society;
-import com.Application.SocietyManagement.users.entity.User;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,9 +16,9 @@ import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
@@ -245,7 +244,7 @@ class MultiTenantMongoTemplateTest {
         Aggregation safeAgg = template.injectTenantToAggregation(agg, "soc-alpha");
 
         Document firstStage = safeAgg.getPipeline().getOperations().get(0)
-                .toDocument(Aggregation.DEFAULT_CONTEXT);
+                .toPipelineStages(Aggregation.DEFAULT_CONTEXT).get(0);
         assertThat(firstStage.containsKey("$match")).isTrue();
         Document matchDoc = firstStage.get("$match", Document.class);
         assertThat(matchDoc.get("societyId")).isEqualTo("soc-alpha");
@@ -391,5 +390,86 @@ class MultiTenantMongoTemplateTest {
 
         Document queryObject = query.getQueryObject();
         assertThat(queryObject.containsKey("societyId")).isFalse();
+    }
+
+    // ── 8. PENETRATION & INJECTION RESISTANCE ──
+
+    @Test
+    @DisplayName("Penetration Test: NoSQL operator injection ($ne, $exists, $regex, $in) in query triggers AccessDeniedException")
+    void penetrationTest_noSqlOperatorInjection_inQuery_throwsAccessDenied() {
+        TenantContext.setSocietyId("soc-alpha");
+
+        // Attack 1: $ne operator injection attempt to bypass tenant filter
+        Query queryNe = new org.springframework.data.mongodb.core.query.BasicQuery("{ societyId: { $ne: 'soc-random' } }");
+        assertThatThrownBy(() -> template.applyTenantFilter(queryNe, Complaint.class, "complaints"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Prohibited operator in tenant criteria: [$ne]");
+
+        // Attack 2: $exists operator injection
+        Query queryExists = new org.springframework.data.mongodb.core.query.BasicQuery("{ societyId: { $exists: true } }");
+        assertThatThrownBy(() -> template.applyTenantFilter(queryExists, Complaint.class, "complaints"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Prohibited operator in tenant criteria: [$exists]");
+
+        // Attack 3: $in array injection attempt
+        Query queryIn = new org.springframework.data.mongodb.core.query.BasicQuery("{ societyId: { $in: ['soc-alpha', 'soc-victim'] } }");
+        assertThatThrownBy(() -> template.applyTenantFilter(queryIn, Complaint.class, "complaints"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Prohibited operator in tenant criteria: [$in]");
+    }
+
+    @Test
+    @DisplayName("Penetration Test: NoSQL operator injection in aggregation $match triggers AccessDeniedException")
+    void penetrationTest_noSqlOperatorInjection_inAggregationMatch_throwsAccessDenied() {
+        TenantContext.setSocietyId("soc-alpha");
+
+        Document injectedMatch = new Document("$match", new Document("societyId", new Document("$ne", "soc-alpha")));
+        Aggregation maliciousAgg = Aggregation.newAggregation(context -> injectedMatch);
+
+        assertThatThrownBy(() -> template.validateAggregationPipeline(maliciousAgg, "soc-alpha"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Pipeline $match on societyId must be an exact string match");
+    }
+
+    @Test
+    @DisplayName("Penetration Test: NoSQL operator injection in aggregation $lookup subpipeline triggers AccessDeniedException")
+    void penetrationTest_noSqlOperatorInjection_inLookupSubpipeline_throwsAccessDenied() {
+        TenantContext.setSocietyId("soc-alpha");
+
+        Document injectedSubMatch = new Document("$match", new Document("societyId", new Document("$ne", "soc-alpha")));
+        Document maliciousLookup = new Document("$lookup", new Document("from", "complaints")
+                .append("pipeline", List.of(injectedSubMatch))
+                .append("as", "crossTenantComplaints"));
+
+        Aggregation maliciousAgg = Aggregation.newAggregation(context -> maliciousLookup);
+
+        assertThatThrownBy(() -> template.validateAggregationPipeline(maliciousAgg, "soc-alpha"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Sub-pipeline $match on societyId must be an exact string match");
+    }
+
+    @Test
+    @DisplayName("Penetration Test: Cross-tenant query blocked for standard ADMIN but permitted for PLATFORM_ADMIN")
+    void penetrationTest_platformAdmin_allowedCrossTenant_regularAdminBlocked() {
+        TenantContext.setSocietyId("soc-alpha");
+
+        // Case 1: Standard ROLE_ADMIN attempts cross-tenant query -> BLOCKED
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin@alpha.com", "pass",
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+
+        Query crossTenantQuery = new Query(Criteria.where("societyId").is("soc-victim"));
+        assertThatThrownBy(() -> template.applyTenantFilter(crossTenantQuery, Complaint.class, "complaints"))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Cross-tenant query violation");
+
+        // Case 2: Platform Admin (ROLE_PLATFORM_ADMIN) performs cross-tenant query -> PERMITTED
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("platformadmin@system.com", "pass",
+                        List.of(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"))));
+
+        // Must execute cleanly without throwing
+        template.applyTenantFilter(crossTenantQuery, Complaint.class, "complaints");
+        assertThat(crossTenantQuery.getQueryObject().get("societyId")).isEqualTo("soc-victim");
     }
 }

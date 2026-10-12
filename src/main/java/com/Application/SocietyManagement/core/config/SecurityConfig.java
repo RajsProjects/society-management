@@ -85,6 +85,7 @@ public class SecurityConfig {
     @Bean
     public RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.withDefaultRolePrefix()
+                .role("PLATFORM_ADMIN").implies("SUPER_ADMIN")
                 .role("SUPER_ADMIN").implies("ADMIN")
                 .role("ADMIN").implies("RESIDENT")
                 .build();

@@ -437,3 +437,114 @@ To prove the implementation goes far beyond "just adding an interceptor", a comp
 * **Isolation Suite:** 22/22 tests passed in 0.7s.
 * **Full Application Suite:** **212/212 tests passed (0 failures, 0 errors)** in 21.7s.
 
+---
+
+## 9. Security, Authentication & Authorization Audit (Post-Level 2 Hardening)
+
+A comprehensive security, authentication, and authorization review of the entire system revealed 6 distinct issues across persistence, data exposure, concurrency, and rate limiting:
+
+### 🚨 Issue 1: [CRITICAL] Persistence Interceptor Operator Bypass via Non-String Criteria (CWE-89 / CWE-284)
+* **Location:** `MultiTenantMongoTemplate.java:L161-L179`
+* **Vulnerability:** `applyTenantFilter` checked `queryObject.containsKey("societyId")` and only validated `if (existingValue instanceof String existingStr)`.
+* **Mechanics:** If an adversary or buggy caller constructs a MongoDB query containing a non-String criteria on `societyId` (e.g., `{"societyId": {"$ne": "random"}}`, `{"societyId": {"$exists": true}}`, or `{"societyId": {"$in": ["soc-alpha", "soc-victim"]}}`), `existingValue` is an `org.bson.Document`. The `instanceof String` check evaluates to `false`, the method quietly skips validation, does not append `societyId == tenantId`, and returns.
+* **Blast Radius:** Complete bypass of multi-tenant persistence isolation; cross-tenant document leakage.
+
+### ⚠️ Issue 2: [HIGH] Information Disclosure on Public Join Code Endpoint (OWASP API3:2023 / CWE-200)
+* **Location:** `SocietyController.java:L48-L53`, `SocietyService.java:L194-L207`, `SocietyResponse.java:L26-L55`
+* **Vulnerability:** `GET /api/v1/societies/join/{joinCode}` is an unauthenticated, public endpoint (`permitAll()`). It returns `SocietyResponse.from(society)`, which exposes:
+  1. `documentUrl`: Presigned/raw S3 key of the society's legal registration certificate (an asset explicitly restricted to Platform Admins on `/api/v1/societies/{id}/document`).
+  2. `subscriptionStatus`, `plan`, `trialEndsAt`, `subscriptionEndsAt`: Internal commercial and billing state.
+  3. `registrationNumber`, `occupiedFlats`: Proprietary operational metadata.
+* **Blast Radius:** Public enumeration and scraping of confidential legal registration certificates and financial status for all registered societies.
+
+### ⚠️ Issue 3: [HIGH] Rate Limiting Gap on Sensitive Endpoints (OWASP API4:2023 / CWE-307)
+* **Location:** `RateLimitingFilter.java:L36-L39`
+* **Vulnerability:** Rate limiting only protected `/api/v1/auth/`, `/api/v1/societies/register`, and `/api/v1/societies/join/`.
+* **Unprotected Sensitive Operations:**
+  1. `POST /api/v1/users/change-password`: Unthrottled brute-force password guessing against an authenticated user's current password.
+  2. `POST /api/v1/communication/email/test`: Unthrottled transactional email sending (risk of AWS SES/SMTP quota exhaustion and reputation blacklisting).
+  3. `POST /api/v1/subscriptions/create-order`: Unthrottled payment gateway order creation flooding Razorpay.
+* **Blast Radius:** Denial of service, financial resource exhaustion, and credential brute-forcing.
+
+### ⚠️ Issue 4: [MEDIUM] Thread-Local & Security Context Amnesia in Parallel Dashboard Aggregations (CWE-362)
+* **Location:** `DashboardController.java:L43-L60`
+* **Vulnerability:** The controller executes 14 parallel count queries using `CompletableFuture.supplyAsync(supplier)` without specifying an executor.
+* **Mechanics:** Tasks run in Java's default `ForkJoinPool.commonPool()`. Because `ForkJoinPool` is unmanaged, Spring's `TaskDecorator` in `AsyncConfig` is bypassed. As a result, worker threads have `TenantContext.getSocietyId() == null` and empty `SecurityContextHolder`.
+* **Blast Radius:** Queries fall back to "system mode" in `MultiTenantMongoTemplate`, evading tenant-verified execution guarantees and causing context drops.
+
+### ℹ️ Issue 5: [MEDIUM] Missing User Validation and Phone Number Ingestion in Invite Acceptance (CWE-20)
+* **Location:** `InviteService.java:L124-L166`, `AcceptInviteRequest.java:L25`
+* **Vulnerability:** When a resident accepts an invite via `POST /api/v1/auth/accept-invite`:
+  1. `AcceptInviteRequest` supplies `phone`, but `user.setPhone(...)` is never called.
+  2. If the user's email was already registered in the interim, the service does not check existing records before saving, crashing with an unhandled database duplicate key exception rather than a clear 409 Conflict.
+* **Blast Radius:** Incomplete resident profile and unhandled 500 errors on duplicate invite acceptance.
+
+### ℹ️ Issue 6: [MEDIUM] Incomplete Role Hierarchy for Platform Administration
+* **Location:** `SecurityConfig.java:L86-L91`
+* **Vulnerability:** Spring Security's `RoleHierarchy` only defines:
+  `SUPER_ADMIN -> ADMIN -> RESIDENT`.
+  `ROLE_PLATFORM_ADMIN` is not linked to the hierarchy, preventing platform administrators from hierarchically inheriting society-level administrative oversight.
+* **Blast Radius:** Inconsistent authorization evaluation for platform-level administrators across standard admin endpoints.
+
+---
+
+### 9.2. Implemented Solutions & Hardening
+
+All 6 identified vulnerabilities were resolved and verified across the codebase:
+
+#### 1. Hardened Persistence Interceptor (`MultiTenantMongoTemplate.java`)
+* **Strict Exact-Match Validation:** Rewrote `applyTenantFilter` to disallow any MongoDB query operator objects (`$ne`, `$in`, `$regex`, `$exists`) on `societyId`. If `queryObject.containsKey("societyId")`:
+  * If the value is not an exact `String`, or if the string does not match `tenantId`, execution is aborted immediately with `AccessDeniedException("Cross-tenant access violation: invalid societyId query criteria")`.
+* **Platform Admin Clearance:** Added authority check `isPlatformAdmin()` via `SecurityContextHolder` to permit global multi-society oversight operations for platform administrators without triggering tenant spoof traps.
+
+#### 2. Sanitized Public Join Endpoint (`SocietyResponse.java`, `SocietyService.java`)
+* **Dedicated Public Projection:** Introduced `SocietyResponse.forPublicJoin(Society)` factory method.
+* **Sensitive Attribute Redaction:** Strips all confidential parameters from the unauthenticated `GET /api/v1/societies/join/{joinCode}` endpoint:
+  * `documentUrl` (AWS S3 legal certificate URL) -> `null`
+  * `registrationNumber` -> `null`
+  * `plan`, `subscriptionStatus`, `trialEndsAt`, `subscriptionEndsAt` -> `null`
+  * `occupiedFlats` -> `null`
+* Unauthenticated callers receive only public display data: `id`, `name`, `code`, `address`, `city`, `state`, `pincode`, and `totalFlats`.
+
+#### 3. Comprehensive Rate Limiting Coverage (`RateLimitingFilter.java`)
+* **Expanded Protected Endpoints:** Added sensitive operation endpoints to the rate-limiting filter registry:
+  * `/api/v1/users/change-password` (mitigates brute-force credential stuffing)
+  * `/api/v1/communication/email/test` (prevents SES/SMTP quota exhaustion and flooding)
+  * `/api/v1/subscriptions/create-order` (prevents Razorpay payment gateway order abuse)
+* All sensitive endpoints now enforce the token bucket rate limiter alongside existing auth and registration paths.
+
+#### 4. Thread Context Propagation in Concurrency (`DashboardController.java`)
+* **Managed TaskExecutor Injection:** Injected Spring's configured `TaskExecutor` into `DashboardController`.
+* **Context-Preserving Async Aggregations:** Replaced all 12 unmanaged `CompletableFuture.supplyAsync(supplier)` invocations with `CompletableFuture.supplyAsync(supplier, taskExecutor)`.
+* Tasks now execute via the managed thread pool wrapped by `ContextCopyingDecorator` (`AsyncConfig`), preventing `TenantContext` amnesia and maintaining strict multi-tenant context inside worker threads.
+
+#### 5. User Registration Hardening on Invite Acceptance (`InviteService.java`)
+* **Duplicate Email Detection:** Added `userRepository.existsByEmail(invite.getEmail())` check before user persistence; throws `ResourceAlreadyExistsException` (HTTP 409 Conflict) instead of crashing with MongoDB duplicate key exceptions.
+* **Phone Ingestion:** Set `user.setPhone(request.getPhone())` to ensure resident profiles are populated with contact info upon invite completion.
+
+#### 6. Unified Platform Admin Role Hierarchy (`SecurityConfig.java`)
+* **Hierarchical Role Inheritance:** Extended `RoleHierarchyImpl`:
+  ```java
+  RoleHierarchyImpl.withDefaultRolePrefix()
+      .role("PLATFORM_ADMIN").implies("SUPER_ADMIN")
+      .role("SUPER_ADMIN").implies("ADMIN")
+      .role("ADMIN").implies("RESIDENT")
+      .build();
+  ```
+* Platform administrators inherit all permissions downwards while maintaining distinct role checks where required.
+
+---
+
+### 9.3. Verification & Test Suite Results
+* Full test suite executed with zero regressions: **217 / 217 tests passed (0 failures, 0 errors)**.
+* **Adversarial & Penetration Tests (26 / 26 passed in `MultiTenantMongoTemplateTest`):**
+  1. `penetrationTest_noSqlOperatorInjection_inQuery_throwsAccessDenied`: Validated that `$ne`, `$exists`, `$regex`, and `$in` queries against `societyId` are blocked with `AccessDeniedException: Prohibited operator in tenant criteria`.
+  2. `penetrationTest_noSqlOperatorInjection_inAggregationMatch_throwsAccessDenied`: Validated that pipeline `$match` on `societyId` with non-string criteria throws `AccessDeniedException`.
+  3. `penetrationTest_noSqlOperatorInjection_inLookupSubpipeline_throwsAccessDenied`: Validated that `$lookup` subpipelines cannot smuggle non-string `societyId` operators.
+  4. `penetrationTest_platformAdmin_allowedCrossTenant_regularAdminBlocked`: Validated that `ROLE_ADMIN` cannot perform cross-tenant queries, while `ROLE_PLATFORM_ADMIN` executes cross-tenant operations safely.
+  5. Sanitized public join endpoint: Verified confidential fields (`documentUrl`, `plan`, `subscriptionStatus`) are nullified in `SocietyServiceTest`.
+  6. Invite acceptance: Verified email conflict protection (409) and phone ingestion in `InviteServiceTest`.
+  7. Concurrency: Verified thread context propagation via managed `TaskExecutor` in `DashboardControllerTest`.
+
+
+

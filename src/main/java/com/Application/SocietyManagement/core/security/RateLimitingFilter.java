@@ -35,7 +35,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         boolean isProtected = path.startsWith("/api/v1/auth/")
                 || path.startsWith("/api/v1/societies/register")
-                || path.startsWith("/api/v1/societies/join/");
+                || path.startsWith("/api/v1/societies/join/")
+                || path.startsWith("/api/v1/users/change-password")
+                || path.startsWith("/api/v1/communication/email/test")
+                || path.startsWith("/api/v1/subscriptions/create-order");
 
         if (!isProtected) {
             filterChain.doFilter(request, response);
