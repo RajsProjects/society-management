@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import org.springframework.beans.factory.annotation.Value;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -26,6 +27,9 @@ import java.util.Set;
 public class SubscriptionEnforcementFilter extends OncePerRequestFilter {
 
     private final SocietyRepository societyRepository;
+
+    @Value("${subscription.enforcement.enabled:false}")
+    private boolean enforcementEnabled;
 
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
@@ -83,8 +87,8 @@ public class SubscriptionEnforcementFilter extends OncePerRequestFilter {
                 return;
             }
 
-            if (society.getSubscriptionStatus() == SubscriptionStatus.EXPIRED
-                    || society.getSubscriptionStatus() == SubscriptionStatus.PAST_DUE) {
+            if (enforcementEnabled && (society.getSubscriptionStatus() == SubscriptionStatus.EXPIRED
+                    || society.getSubscriptionStatus() == SubscriptionStatus.PAST_DUE)) {
                 response.setStatus(402); // Payment Required
                 response.setContentType("application/json");
                 response.getWriter().write(
