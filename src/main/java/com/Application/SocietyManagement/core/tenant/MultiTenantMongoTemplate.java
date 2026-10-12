@@ -267,10 +267,15 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
                     Document matchDoc = doc.get("$match", Document.class);
                     if (matchDoc != null && matchDoc.containsKey(TENANT_KEY)) {
                         Object val = matchDoc.get(TENANT_KEY);
-                        if (val instanceof String strVal && !strVal.equals(tenantId)) {
+                        if (val instanceof String strVal) {
+                            if (!strVal.equals(tenantId)) {
+                                throw new AccessDeniedException(
+                                        "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
+                                                + " but authenticated tenant is " + tenantId);
+                            }
+                        } else {
                             throw new AccessDeniedException(
-                                    "Cross-tenant aggregation violation: Pipeline $match targets society " + strVal
-                                            + " but authenticated tenant is " + tenantId);
+                                    "Cross-tenant aggregation violation: Pipeline $match on societyId must be an exact string match");
                         }
                     }
                 }
@@ -284,10 +289,15 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
                                     Document subMatch = stageDoc.get("$match", Document.class);
                                     if (subMatch != null && subMatch.containsKey(TENANT_KEY)) {
                                         Object val = subMatch.get(TENANT_KEY);
-                                        if (val instanceof String strVal && !strVal.equals(tenantId)) {
+                                        if (val instanceof String strVal) {
+                                            if (!strVal.equals(tenantId)) {
+                                                throw new AccessDeniedException(
+                                                        "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
+                                                                + " but authenticated tenant is " + tenantId);
+                                            }
+                                        } else {
                                             throw new AccessDeniedException(
-                                                    "Cross-tenant lookup violation: Sub-pipeline $match targets society " + strVal
-                                                            + " but authenticated tenant is " + tenantId);
+                                                    "Cross-tenant lookup violation: Sub-pipeline $match on societyId must be an exact string match");
                                         }
                                     }
                                 }
