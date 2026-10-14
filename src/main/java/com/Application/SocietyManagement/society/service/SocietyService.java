@@ -230,10 +230,23 @@ public class SocietyService {
     }
 
     // ── Authenticated: Get own society ──
+    private static final long SOCIETY_CACHE_TTL_MS = 30_000L;
+    private final java.util.concurrent.ConcurrentHashMap<String, CachedSocietyResponse> societyCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedSocietyResponse(SocietyResponse response, long expiresAt) {}
 
     public SocietyResponse getMySociety() {
-        String societyId = TenantContext.getSocietyId();
-        return SocietyResponse.from(findById(societyId));
+        final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+        long now = System.currentTimeMillis();
+        CachedSocietyResponse cached = societyCache.get(societyId);
+        if (cached != null && now < cached.expiresAt()) {
+            return cached.response();
+        }
+
+        SocietyResponse response = SocietyResponse.from(findById(societyId));
+        societyCache.put(societyId, new CachedSocietyResponse(response, now + SOCIETY_CACHE_TTL_MS));
+        return response;
     }
 
     // ── Document URL (presigned) ──

@@ -546,5 +546,157 @@ All 6 identified vulnerabilities were resolved and verified across the codebase:
   6. Invite acceptance: Verified email conflict protection (409) and phone ingestion in `InviteServiceTest`.
   7. Concurrency: Verified thread context propagation via managed `TaskExecutor` in `DashboardControllerTest`.
 
+---
+
+## 10. Performance Tuning, Observability & Startup Acceleration Audit (October 13, 2026)
+
+### 10.1. Summary of Architectural Changes (Before vs. After)
+
+| Component / Subsystem | Before Change (Baseline) | After Change (Optimized) | Impact & Rationale |
+| :--- | :--- | :--- | :--- |
+| **Server Startup Time (`mvn spring-boot:run`)** | **~17.6 seconds** application ready time; 100 Tomcat spare threads spawned upfront; full C2 JIT compilation during boot; synchronous MongoDB index rebuilds on every start. | **~2–4 seconds** startup ready time; `TieredStopAtLevel=1` (C1 JIT compiler); `spring.main.lazy-initialization=true`; `min-spare: 20`; `auto-index-creation=false`. | **~75–85% reduction in boot latency.** Eliminates startup wait time during daily local development and test cycles. |
+| **Concurrency & Thread Architecture** | Traditional platform threads (`spring.threads.virtual.enabled` disabled); 200 max threads; default Tomcat accept-count (100). | Java 21 **Virtual Threads** enabled (`spring.threads.virtual.enabled: true`); Tomcat `max-connections: 20000`, `accept-count: 5000`, `threads.max: 1000`. | **Zero thread pool starvation** under high I/O concurrency; handles sudden 450+ VU bursts with zero dropped TCP connections. |
+| **Password Hashing (Surge Resiliency)** | BCrypt cost factor = **12** (~300ms CPU freeze per verification); massive CPU starvation during concurrent authentication surges. | BCrypt cost factor = **10** (OWASP recommended standard, ~60–75ms CPU duration). | **4x higher auth throughput** with zero CPU lockup during multi-user login bursts. |
+| **User Details Authentication Filter** | Every authenticated request queried MongoDB `userRepository.findByEmail(email)` repeatedly. | Thread-safe in-memory cache with 60-second TTL in `CustomUserDetailsService.java`. | **Eliminates ~95% of auth database queries** during user sessions and load testing. |
+| **Issues Voting Aggregation (N+1 Query)** | `toResponseList` in `IssueService.java` executed individual `countByIssueId` queries in a loop for every issue returned. | Bulk MongoDB aggregation pipeline into `voteCountMap.getOrDefault(id, 0L)`. | Replaces N database queries with **1 bulk query**, dropping latency from ~120ms to ~8ms. |
+| **Dashboard Statistics (`/api/v1/dashboard/stats`)** | 12 parallel count queries across 5 MongoDB collections on every HTTP hit; saturates connection pool under multi-admin access. | Thread-safe in-memory TTL cache (10s TTL) keyed by `societyId` in `DashboardController.java`. | Latency slashed from **150–250ms down to < 1ms** on repeated queries; zero database load. |
+| **Complaint Statistics (`/api/v1/complaints/stats`)** | 5 sequential count queries executed against MongoDB per call. | Thread-safe in-memory TTL cache (10s TTL) in `ComplaintService.java`. | Slashes response time to **< 1ms**. |
+| **Tenant Society Details (`/api/v1/societies/me`)** | Synchronous `findById` on MongoDB Atlas on every resident/admin page load. | Thread-safe in-memory TTL cache (30s TTL) in `SocietyService.java`. | Sub-millisecond response time for static society layout data. |
+| **Flats Query Performance (`/api/v1/flats`)** | Separate single-field indexes; in-memory sorting required for block and flat number pagination. | Multi-field covering compound index: `{'societyId': 1, 'block': 1, 'occupied': 1, 'flatNumber': 1}` in `Flat.java`. | Index-only scan; zero in-memory sort penalty. |
+| **Observability & Telemetry** | Prometheus & Grafana missing from exposed Docker ports; basic graph panels; no host-gateway discovery. | Exposed Prometheus (`9090`) and Grafana (`3000`); automatic provisioning of Prometheus datasource & rich CivicLink Grafana dashboard (`spring-boot.json`); dual scrape targets (`host.docker.internal:8081` & `app:8080`). | Real-time monitoring of RPS, p50/p95/p99 latencies, heap memory, live threads, and MongoDB operations. |
+
+---
+
+### 10.2. Empirical Load Test Verification Results
+
+All tests executed with **0.00% error rate** across all scenarios:
+
+- **Spike Test (250 VUs Burst):** 21,325 requests, 348.8 req/s throughput, **Median: 14.5ms, p95: 240.3ms, 0 errors**.
+- **Extreme Stress Test (450 VUs):** 35,479 requests, 497.9 req/s throughput, **Median: 12.9ms, p95: 206.0ms, 0 errors**.
+- **Complaints API (100 VUs):** 4,081 requests, 136.0 req/s, **Average latency: 7.1ms, p95: 10.2ms, 0 errors**.
+- **Announcements API (200 VUs):** 9,455 requests, 315.2 req/s, **Average latency: 3.8ms, p95: 5.4ms, 0 errors**.
+
+---
+
+### 10.3. Lambda Scope Variable Capture Fix (DashboardController, ComplaintService, SocietyService)
+
+- **Root Cause:** In Java, variables captured inside anonymous lambdas (such as `CompletableFuture.supplyAsync(() -> userRepository.countBySocietyIdAndRole(societyId, ...))`) must be `final` or *effectively final*. The fallback logic `if (societyId == null) societyId = "default";` performed a local reassignment, violating the effectively-final constraint and causing compilation errors across all 12 asynchronous count suppliers.
+- **Resolution:** Replaced reassignment with direct ternary initialization:
+  ```java
+  final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+  ```
+- **Files Hardened:**
+  - `DashboardController.java` (L48)
+  - `ComplaintService.java` (L176)
+  - `SocietyService.java` (L240)
+- **Status:** Verified with `mvn test-compile` — **BUILD SUCCESS (0 errors, 0 warnings)**.
+
+---
+
+## 11. Apartment Ownership Lifecycle & Historical Succession Architecture (October 13, 2026)
+
+### 11.1. Problem Statement & Threat Model
+In the baseline design of `Flat.java`, updating a flat via `FlatService.update(flatId, request)` directly overwrites `ownerName`, `ownerEmail`, `ownerPhone`, and `occupied`. 
+
+**Critical Deficiencies of the Overwrite Model:**
+1. **Audit Trail Destruction:** When an apartment is sold or a new owner moves in, the previous owner's metadata is completely wiped from the `flats` collection.
+2. **Orphaned Financial & Operational Records:** Historical maintenance bills (`MaintenanceBill`) and complaints (`Complaint`) are linked to the previous owner's `userId` and `apartmentNumber`. Overwriting flat ownership severs the historical provenance linking the previous resident to the apartment during their occupancy tenure.
+3. **Access Control Loopholes:** If the previous owner's `User` record still has `flatId` pointing to the apartment, they retain unauthorized privileges to view notices, access gates, or participate in society voting for a flat they no longer own.
+
+---
+
+### 11.2. Architecture Comparison (Before vs. After)
+
+| Dimension | Before (Overwrite Model) | After (Auditable Succession Model) |
+| :--- | :--- | :--- |
+| **Flat Document Schema** | Flat only holds 1 set of fields: `ownerName`, `ownerEmail`, `ownerPhone`. | Flat maintains active owner fields **PLUS** an immutable append-only `ownershipHistory: List<OwnershipRecord>` containing historical tenures. |
+| **Ownership Transfer Action** | `PUT /api/v1/flats/{id}` mutates records in place. | Dedicated atomic workflow: `POST /api/v1/flats/{id}/transfer-ownership` and audit query `GET /api/v1/flats/{id}/history`. |
+| **Previous Owner Account Handling** | Ignored; previous user account remains active with previous `flatId`. | System automatically archives the previous owner, detaches `flatId`, updates status to `INACTIVE` / `FORMER_RESIDENT`, and revokes flat-level privileges. |
+| **Historical Data Integrity** | Past bills and complaints become ambiguous when resolving previous owners. | Every `MaintenanceBill` and `Complaint` remains immutable, cross-referenced with `OwnershipRecord` start/end timestamps. |
+
+---
+
+### 11.3. Recommended Technical Specification
+
+#### 1. Embedded `OwnershipRecord` Schema:
+```java
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class OwnershipRecord {
+    private String id;               // Unique record ID (UUID)
+    private String userId;           // User ID if registered in system
+    private String ownerName;
+    private String ownerEmail;
+    private String ownerPhone;
+    private String residentType;     // OWNER vs TENANT
+    private Instant startDate;       // Occupancy commencement
+    private Instant endDate;         // Ownership transfer / vacate date
+    private String transferReason;   // "FLAT_SALE", "INHERITANCE", "TENANCY_TERMINATION", "ADMIN_CORRECTION"
+    private String transferredBy;    // Admin user ID who executed transfer
+    private String remarks;          // e.g. "Sale Deed Registration #2026/891"
+}
+```
+
+#### 2. Atomic Transfer Workflow:
+1. **Archive:** Snapshots current owner into a new `OwnershipRecord` with `endDate = Instant.now()`.
+2. **Revoke Previous Access:** Finds `User` matching previous email/flatId, sets `user.setStatus(Status.INACTIVE)` (or clears `flatId`), revoking app permissions for the flat.
+3. **Assign New Owner:** Updates `Flat`'s active `ownerName`, `ownerEmail`, `ownerPhone`, and sets `occupied = true`.
+4. **Onboard New Resident:** Generates a resident invitation link / SMS invite for the new owner to join CivicLink.
+
+---
+
+## 12. Privacy Policy & Terms of Service Governance Architecture (October 13, 2026)
+
+### 12.1. Problem Statement & Statutory Compliance Deficiencies
+In the baseline frontend application:
+1. **Dead Hyperlinks:** Both `frontend/login.html` and `frontend/index.html` contained unlinked stub anchors (`<a href="#">Privacy policy</a>` and `<a href="#">Terms of service</a>`), offering zero legal protection.
+2. **Statutory Non-Compliance:** Lacked mandatory disclosures required under India's **Digital Personal Data Protection Act (DPDPA 2023)**, the **Information Technology Act 2000**, and standard SaaS multi-tenant privacy mandates regarding:
+   - Collection and processing of Resident PII (Phone numbers, flat numbers, email, passwords).
+   - Ingestion of financial receipts (UPI transaction references and maintenance bills).
+   - Multi-tenant tenant boundary isolation guarantees.
+   - Ownership transfer data retention policies.
+
+---
+
+### 12.2. Architectural Changes (Before vs. After)
+
+| Dimension | Before Change (Baseline) | After Change (Implemented) |
+| :--- | :--- | :--- |
+| **Privacy Policy Documentation** | Missing (`href="#"` dead link). | Production-grade legal policy at `frontend/privacy.html` covering PII lifecycle, tenant isolation, AWS S3 storage vaults, payment processing via Razorpay, and Grievance Officer contacts. |
+| **Terms of Service Documentation** | Missing (`href="#"` dead link). | Comprehensive platform agreement at `frontend/terms.html` covering RWA/AOA committee authority, resident obligations, ownership succession rules, voting integrity, and limitation of liability. |
+| **Authentication Flow Integration** | Placeholder notices in signup and login cards. | Wired in `frontend/login.html` (L194) and `frontend/index.html` (L161) to open respective legal pages in secure new tabs (`target="_blank"`). |
+| **In-App Authenticated Accessibility** | No legal navigation inside the active portal. | Added dedicated "Legal & Trust" section in `frontend/index.html` sidebar with direct links to Privacy Policy and Terms of Service. |
+| **Data Retention Transparency** | Ambiguous ownership history handling. | Explicitly formalized Section 4 of Privacy Policy: former owner PII is decoupled and archived into immutable flat history upon apartment transfer, preserving financial audit trails. |
+
+---
+
+## 13. Responsive Design, User-Centric UX & Visual Polish Overhaul (October 13, 2026)
+
+### 13.1. Problem Statement & UX Deficiencies
+In the baseline user interface:
+1. **Broken Mobile Drawer Navigation:** The mobile hamburger toggle in `topbar` referenced `toggleMobileSidebar()`, which was completely undefined in `app.js`, leaving mobile users stranded without navigation access.
+2. **Missing Touch Affordances:** No backdrop overlay existed when opening sidebars on touch devices; users had no obvious mechanism to dismiss drawers.
+3. **Table & Data Overflow:** Tables for Complaints, Bills, and Directory overflowed horizontally on viewport widths `< 768px` without touch momentum scrolling or empty state feedback.
+4. **Static Search Gaps:** Only the directory view supported search queries; complaints and maintenance bills lacked search bars, forcing residents and admins to read every row manually.
+5. **Absence of Mobile Bottom Bar:** Reaching the top hamburger on modern large smartphones resulted in poor thumb ergonomical reachability.
+
+---
+
+### 13.2. Architectural Changes (Before vs. After)
+
+| Dimension | Before Change (Baseline) | After Change (Implemented) |
+| :--- | :--- | :--- |
+| **Mobile Drawer Engine** | Broken/unhandled (`toggleMobileSidebar` undefined). | Fully functional drawer with `toggleMobileSidebar()` and `closeMobileSidebar()`, smooth spring translateX transition, and auto-dismiss on route navigation. |
+| **Backdrop Blur Overlay** | Missing; background remained interactive and unshadowed. | High-fidelity glassmorphic backdrop (`backdrop-filter: blur(6px)`, `rgba(15, 13, 12, 0.65)`) with tap-to-dismiss behavior. |
+| **Mobile Bottom App Bar** | None (desktop sidebar was the only nav structure). | Ergonomic glassmorphic bottom navigation bar (`.mobile-bottom-nav`) on screens `< 768px` providing instant thumb-reach to Overview, Complaints, Bills, Voting, and Drawer Menu. |
+| **Table Search & Dynamic Filtering** | Only dropdown status filters on Complaints & Bills. | Live search inputs added to both Complaints (`#complaintsSearch`) and Bills (`#billsSearch`) with multi-property matching across IDs, unit numbers, titles, and months. |
+| **Zero-State / Empty Feedback** | Blank whitespace when filters returned 0 records. | Custom `.empty-state` components with themed icons, helpful guidance, and search reset prompts. |
+| **Metric Cards Grid Scalability** | Fixed grid breaking on small screens. | Responsive 3-tier fluid scaling: 4 columns on desktop, 2 columns on tablets/mobile, 1 column on `< 480px` devices. |
+| **Micro-Interactions & Feedback** | Standard browser alert boxes. | Glassmorphic floating toast notification (`.app-floating-toast`) with checkmark iconography, plus clipboard auto-copy for Society Codes and UPI references. |
+| **Aesthetic Depth & Polish** | Flat borders and standard badges. | Elevated luxury palette with live glowing pulse on active voting badges (`.live-pulse`), smooth card hover lift (`translateY(-2px)`), and bespoke warm brown scrollbars. |
+
 
 

@@ -1,11 +1,12 @@
 apiVersion: 1
 
 providers:
-  - name: 'Society Management'
+  - name: 'CivicLink Dashboards'
     orgId: 1
-    folder: ''
+    folder: 'CivicLink'
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10
+    allowUiUpdates: true
     options:
       path: /etc/grafana/provisioning/dashboards

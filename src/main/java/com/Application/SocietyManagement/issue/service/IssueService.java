@@ -175,6 +175,7 @@ public class IssueService {
                 .stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
 
+        boolean aggregationFailed = false;
         Map<String, Long> voteCountMap = new java.util.HashMap<>();
         try {
             var counts = issueVoteRepository.countVotesByIssueIds(issueIds);
@@ -186,9 +187,10 @@ public class IssueService {
                 }
             }
         } catch (Exception ignored) {
-            // Fallback for environments where aggregation is un-mocked
+            aggregationFailed = true;
         }
 
+        final boolean useFallback = aggregationFailed;
         return issues.stream().map(issue -> {
             User creator = creators.get(issue.getCreatorId());
             CreatorDto creatorDto = creator != null
@@ -199,9 +201,9 @@ public class IssueService {
                       .build()
                     : null;
 
-            long voteCount = voteCountMap.containsKey(issue.getId())
-                    ? voteCountMap.get(issue.getId())
-                    : issueVoteRepository.countByIssueId(issue.getId());
+            long voteCount = useFallback
+                    ? issueVoteRepository.countByIssueId(issue.getId())
+                    : voteCountMap.getOrDefault(issue.getId(), 0L);
 
             return IssueResponse.builder()
                     .id(issue.getId())

@@ -9,7 +9,7 @@ public class PepperedPasswordEncoder implements PasswordEncoder {
     private final String pepper;
 
     public PepperedPasswordEncoder(String pepper) {
-        this.bcrypt = new BCryptPasswordEncoder(12); // strength 12 = good balance of security vs speed
+        this.bcrypt = new BCryptPasswordEncoder(10); // strength 10 = OWASP standard for web applications
         this.pepper = pepper != null ? pepper : "";
     }
 
