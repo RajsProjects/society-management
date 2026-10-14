@@ -22,7 +22,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final int MAX_REQUESTS = 10;
+    @org.springframework.beans.factory.annotation.Value("${security.rate-limit.max-requests:120}")
+    private int maxRequests = 120;
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
     @Override
@@ -62,7 +63,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
                 }
             }
 
-            if (count != null && count > MAX_REQUESTS) {
+            if (count != null && count > maxRequests) {
                 log.warn("Rate limit exceeded for IP: {} on path: {}", ip, path);
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json");

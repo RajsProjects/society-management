@@ -11,7 +11,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @CompoundIndexes({
         @CompoundIndex(def = "{'societyId': 1, 'flatNumber': 1}", unique = true),
         @CompoundIndex(def = "{'societyId': 1, 'block': 1, 'flatNumber': 1}", name = "flat_society_block_flat_idx"),
-        @CompoundIndex(def = "{'societyId': 1, 'occupied': 1}", name = "flat_society_occupied_idx")
+        @CompoundIndex(def = "{'societyId': 1, 'occupied': 1}", name = "flat_society_occupied_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'block': 1, 'occupied': 1, 'flatNumber': 1}", name = "flat_society_block_occ_flat_idx")
 })
 @Getter
 @Setter

@@ -6,7 +6,7 @@ scrape_configs:
   - job_name: 'society-management'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['app:8080']
+      - targets: ['app:8081']
     scrape_interval: 5s
 
   - job_name: 'prometheus'

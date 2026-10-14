@@ -185,6 +185,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<jvmArguments>-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xms512m -Xmx2048m -XX:+UseG1GC</jvmArguments>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>

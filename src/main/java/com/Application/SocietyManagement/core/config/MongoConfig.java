@@ -21,14 +21,32 @@ public class MongoConfig {
         return new MongoCustomConversions(List.of());
     }
 
+    @org.springframework.beans.factory.annotation.Value("${spring.data.mongodb.pool.max-size:200}")
+    private int maxPoolSize;
+
+    @org.springframework.beans.factory.annotation.Value("${spring.data.mongodb.pool.min-size:20}")
+    private int minPoolSize;
+
+    @org.springframework.beans.factory.annotation.Value("${spring.data.mongodb.pool.max-wait-time-ms:5000}")
+    private long maxWaitTimeMs;
+
+    @org.springframework.beans.factory.annotation.Value("${spring.data.mongodb.pool.max-idle-time-ms:30000}")
+    private long maxIdleTimeMs;
+
     @Bean
     public MongoClientSettingsBuilderCustomizer mongoConnectionPoolCustomizer() {
-        return builder -> builder.applyToConnectionPoolSettings(pool ->
-                pool.maxSize(50)
-                    .minSize(5)
-                    .maxWaitTime(2000, TimeUnit.MILLISECONDS)
-                    .maxConnectionIdleTime(30000, TimeUnit.MILLISECONDS)
-        );
+        return builder -> {
+            builder.applyToConnectionPoolSettings(pool ->
+                    pool.maxSize(maxPoolSize)
+                        .minSize(minPoolSize)
+                        .maxWaitTime(maxWaitTimeMs, TimeUnit.MILLISECONDS)
+                        .maxConnectionIdleTime(maxIdleTimeMs, TimeUnit.MILLISECONDS)
+            );
+            builder.applyToSocketSettings(socket ->
+                    socket.connectTimeout(5000, TimeUnit.MILLISECONDS)
+                          .readTimeout(10000, TimeUnit.MILLISECONDS)
+            );
+        };
     }
 
     @Bean

@@ -21,33 +21,28 @@ export const options = {
     },
 };
 
-function getAuthToken() {
+export function setup() {
     const res = http.post(
         `${BASE_URL}/auth/login`,
         JSON.stringify(ADMIN_CREDENTIALS),
         { headers: { 'Content-Type': 'application/json' } }
     );
-    return JSON.parse(res.body).token;
+    return { token: JSON.parse(res.body).token };
 }
 
-export default function () {
-    const token = getAuthToken();
+export default function (data) {
     const params = {
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${data.token}`
         }
     };
 
     group('Auth', () => {
-        const res = http.post(
-            `${BASE_URL}/auth/login`,
-            JSON.stringify(ADMIN_CREDENTIALS),
-            { headers: { 'Content-Type': 'application/json' } }
-        );
+        const res = http.get(`${BASE_URL}/users/me`, params);
         responseTime.add(res.timings.duration);
         errorRate.add(res.status !== 200);
-        check(res, { 'login ok': (r) => r.status === 200 });
+        check(res, { 'get profile ok': (r) => r.status === 200 });
         sleep(0.5);
     });
 

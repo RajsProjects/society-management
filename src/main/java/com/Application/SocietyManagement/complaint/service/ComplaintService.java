@@ -166,10 +166,22 @@ public class ComplaintService {
     }
 
     // ── Dashboard stats ──
+    private static final long STATS_TTL_MS = 10_000L;
+    private final java.util.concurrent.ConcurrentHashMap<String, CachedComplaintStats> complaintStatsCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedComplaintStats(java.util.Map<String, Long> stats, long expiresAt) {}
 
     public java.util.Map<String, Long> getStats() {
-        String societyId = TenantContext.getSocietyId();
-        return java.util.Map.of(
+        final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+
+        long now = System.currentTimeMillis();
+        CachedComplaintStats cached = complaintStatsCache.get(societyId);
+        if (cached != null && now < cached.expiresAt()) {
+            return cached.stats();
+        }
+
+        java.util.Map<String, Long> stats = java.util.Map.of(
                 "total", complaintRepository.countBySocietyId(societyId),
                 "open", complaintRepository.countBySocietyIdAndStatus(
                         societyId, ComplaintStatus.OPEN),
@@ -180,6 +192,9 @@ public class ComplaintService {
                 "rejected", complaintRepository.countBySocietyIdAndStatus(
                         societyId, ComplaintStatus.REJECTED)
         );
+
+        complaintStatsCache.put(societyId, new CachedComplaintStats(stats, now + STATS_TTL_MS));
+        return stats;
     }
 
     private Complaint findComplaint(String complaintId) {

@@ -17,22 +17,20 @@ export const options = {
     thresholds: THRESHOLDS,
 };
 
-function getAuthToken() {
+export function setup() {
     const res = http.post(
         `${BASE_URL}/auth/login`,
         JSON.stringify(ADMIN_CREDENTIALS),
         { headers: { 'Content-Type': 'application/json' } }
     );
-    return JSON.parse(res.body).token;
+    return { token: JSON.parse(res.body).token };
 }
 
-export default function () {
-    const token = getAuthToken();
-
+export default function (data) {
     const params = {
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${data.token}`
         }
     };
 

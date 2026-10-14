@@ -34,12 +34,24 @@ public class DashboardController {
     private final IssueRepository issueRepository;
     private final org.springframework.core.task.TaskExecutor taskExecutor;
 
+    private static final long CACHE_TTL_MS = 10_000L; // 10 seconds TTL
+    private final java.util.concurrent.ConcurrentHashMap<String, CachedDashboardStats> statsCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedDashboardStats(DashboardStats stats, long expiresAt) {}
+
     @Operation(summary = "Get dashboard stats",
             description = "Returns all dashboard statistics. Admin only.")
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<DashboardStats> getStats() {
-        String societyId = TenantContext.getSocietyId();
+        final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+
+        long now = System.currentTimeMillis();
+        CachedDashboardStats cached = statsCache.get(societyId);
+        if (cached != null && now < cached.expiresAt()) {
+            return ResponseEntity.ok(cached.stats());
+        }
 
         java.util.concurrent.CompletableFuture<Long> totalResidents = java.util.concurrent.CompletableFuture.supplyAsync(
                 () -> userRepository.countBySocietyIdAndRole(societyId, Roles.RESIDENT), taskExecutor);
@@ -87,6 +99,7 @@ public class DashboardController {
                 .resolvedIssues(resolvedIssues.join())
                 .build();
 
+        statsCache.put(societyId, new CachedDashboardStats(stats, now + CACHE_TTL_MS));
         return ResponseEntity.ok(stats);
     }
 }

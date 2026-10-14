@@ -1,8 +1,8 @@
-export const BASE_URL = 'http://localhost:8080/api/v1';
+export const BASE_URL = __ENV.BASE_URL || 'http://localhost:8081/api/v1';
 
 export const ADMIN_CREDENTIALS = {
-    email: __ENV.ADMIN_EMAIL || 'admin@society.com',
-    password: __ENV.ADMIN_PASSWORD || 'ChangeMe123!'
+    email: __ENV.TEST_ADMIN_EMAIL || __ENV.PLATFORM_ADMIN_EMAIL || 'sumanmandal8955@gmail.com',
+    password: __ENV.TEST_ADMIN_PASSWORD || __ENV.PLATFORM_ADMIN_PASSWORD || '@Raj5214895584099'
 };
 
 export const TEST_RESIDENT = {
