@@ -238,6 +238,14 @@
           <span class="nav-badge" style="background: var(--brown-600)">Live</span>
         </a>
 
+        <a href="javascript:void(0)" class="nav-link" data-view="chat" onclick="navigate('chat')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          Society Groups
+          <span class="nav-badge" id="chatUnreadBadge" style="background: var(--brown-600)">E2EE</span>
+        </a>
+
         <a href="javascript:void(0)" class="nav-link" data-view="announcements" onclick="navigate('announcements')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -314,6 +322,51 @@
         </div>
 
         <div class="topbar-actions">
+          <!-- Notification Center Bell & Dropdown -->
+          <div class="notification-wrap">
+            <button class="topbar-icon-btn" id="btnNotificationBell" onclick="toggleNotificationPanel()" title="App Changes & Society Updates" aria-label="Notifications">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span class="notification-indicator" id="notifBadgeCount">3</span>
+            </button>
+
+            <!-- In-App Notification Center Dropdown -->
+            <div class="notification-panel" id="notificationPanel">
+              <div class="notification-header">
+                <div class="notif-header-title">
+                  <h4>App & System Updates</h4>
+                  <span class="status-badge" style="background: var(--cream-200); color: var(--brown-800); font-size: 0.72rem;" id="notifUnreadLabel">3 Unread</span>
+                </div>
+                <div class="notif-header-actions">
+                  <button class="btn-text-subtle" onclick="markAllNotificationsAsRead()">Mark all read</button>
+                  <button class="btn-close-panel" onclick="closeNotificationPanel()">&times;</button>
+                </div>
+              </div>
+
+              <!-- Admin Quick Dispatch Banner trigger -->
+              <div class="admin-only-block" id="adminNotifBroadcastBar" style="display: none; padding: 10px 16px; background: var(--cream-100); border-bottom: 1px solid var(--border-light);">
+                <button class="btn-primary-action" style="width: 100%; font-size: 0.78rem; padding: 6px 12px;" onclick="openModal('appChangeNoticeModal')">
+                  + Broadcast App / Policy Change
+                </button>
+              </div>
+
+              <div class="notif-tabs">
+                <button class="notif-tab-btn active" id="tabNotifAll" onclick="filterNotifications('ALL')">All</button>
+                <button class="notif-tab-btn" id="tabNotifSystem" onclick="filterNotifications('SYSTEM')">App Updates</button>
+                <button class="notif-tab-btn" id="tabNotifAdmin" onclick="filterNotifications('ADMIN')">Admin Alerts</button>
+              </div>
+
+              <div class="notification-list" id="notificationItemsList">
+                <!-- Dynamically populated via app.js -->
+              </div>
+              <div class="notification-footer">
+                <span style="font-size: 0.74rem; color: var(--text-light);">Samaaj Core Engine v2.4.0 • E2EE Active</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Role Simulator Switcher -->
           <div class="role-pill-switch" title="Toggle perspective to test permissions">
             <button class="role-pill-btn active" id="btnRoleResident" onclick="switchPortalRole('RESIDENT')">Resident</button>
@@ -607,6 +660,165 @@
                   <!-- Dynamic Rows -->
                 </tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW: SOCIETY GROUPS (WHATSAPP-STYLE E2EE CHAT)
+             ========================================== -->
+        <section id="view-chat" class="view-section">
+          <div class="chat-workspace" id="chatWorkspace">
+            
+            <!-- Left Pane: Conversation List -->
+            <div class="chat-sidebar">
+              <div class="chat-sidebar-header">
+                <h3>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                  </svg>
+                  Society Groups
+                </h3>
+                <span class="e2ee-pill" title="Hardware-backed AES-GCM 256 End-to-End Encryption">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                  E2EE
+                </span>
+              </div>
+
+              <!-- Search Conversations -->
+              <div class="chat-sidebar-search">
+                <input type="text" class="chat-search-input" id="chatSearchInput" placeholder="Search chats or messages..." oninput="handleFilterChatList()">
+              </div>
+
+              <!-- Filter Pills -->
+              <div class="chat-filter-pills">
+                <button class="chat-filter-pill active" onclick="filterChatCategory('ALL', this)">All Groups</button>
+                <button class="chat-filter-pill" onclick="filterChatCategory('COMMUNITY', this)">Community</button>
+                <button class="chat-filter-pill" onclick="filterChatCategory('ADMIN', this)">Committee</button>
+                <button class="chat-filter-pill" onclick="filterChatCategory('SECURITY', this)">Security</button>
+                <button class="chat-filter-pill" onclick="filterChatCategory('TOWERS', this)">Towers</button>
+              </div>
+
+              <!-- Groups List -->
+              <div class="chat-groups-list" id="chatGroupsList">
+                <!-- Injected via renderChatGroupsList() in app.js -->
+              </div>
+            </div>
+
+            <!-- Right Pane: Active Chat Conversation -->
+            <div class="chat-main">
+              
+              <!-- Chat Header -->
+              <div class="chat-main-header">
+                <div class="chat-main-header-info">
+                  <button class="chat-input-btn" id="btnBackToGroupList" onclick="toggleMobileChatView(false)" style="display: none; margin-right: 4px;" title="Back to groups">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  </button>
+                  <div class="chat-avatar" id="currentChatAvatar">🏡</div>
+                  <div class="chat-main-header-text">
+                    <h3 id="currentChatTitle">Green Heights Community</h3>
+                    <span id="currentChatMembers">184 residents • Tap for encryption & members</span>
+                  </div>
+                </div>
+
+                <div class="chat-main-header-actions">
+                  <button class="chat-action-btn" onclick="openE2EEVerifyModal()" title="Verify End-to-End Encryption Fingerprint">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>Verify Encryption</span>
+                  </button>
+                  <button class="chat-action-btn" onclick="openModal('chatMembersModal')" title="View Group Members">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>Members</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Pinned Community Announcement Bar -->
+              <div class="chat-pinned-bar" id="chatPinnedBar">
+                <div class="chat-pinned-left">
+                  <span>📌</span>
+                  <strong id="chatPinnedText">Notice: Annual General Meeting (AGM) scheduled for Sunday 10:00 AM at Clubhouse</strong>
+                </div>
+                <button class="btn-text-subtle" onclick="navigate('announcements')" style="font-size: 0.72rem;">View Notice</button>
+              </div>
+
+              <!-- Chat Messages Body -->
+              <div class="chat-messages-wrap" id="chatMessagesWrap">
+                <!-- E2EE Security Disclaimer -->
+                <div class="e2ee-security-banner">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -2px; margin-right: 4px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                  <strong>Messages in this society group are End-to-End Encrypted.</strong>
+                  No one outside this group, not even Samaaj administrators or servers, can read or listen to them.
+                  <a href="javascript:void(0)" class="e2ee-verify-link" onclick="openE2EEVerifyModal()">Tap to verify safety code</a>.
+                </div>
+
+                <!-- Date Divider -->
+                <div class="chat-date-divider">
+                  <span class="chat-date-pill">Today</span>
+                </div>
+
+                <!-- Messages Stream injected via renderActiveChatMessages() -->
+                <div id="chatMessagesStream"></div>
+              </div>
+
+              <!-- Bottom Input Bar -->
+              <div class="chat-input-bar">
+                <!-- Emoji Button & Tray -->
+                <button type="button" class="chat-input-btn" onclick="toggleEmojiTray()" title="Insert Emoji">
+                  😊
+                </button>
+                <div class="chat-emoji-tray" id="chatEmojiTray">
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('👍')">👍</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('❤️')">❤️</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('👏')">👏</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('🙏')">🙏</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('💡')">💡</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('😂')">😂</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('⚡')">⚡</button>
+                  <button type="button" class="emoji-btn" onclick="insertEmoji('✅')">✅</button>
+                </div>
+
+                <!-- Attachment Button & Menu -->
+                <button type="button" class="chat-input-btn" onclick="toggleAttachmentMenu()" title="Attach Document / Media">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                </button>
+                <div class="chat-attachment-menu" id="chatAttachmentMenu">
+                  <button type="button" class="attachment-opt-btn" onclick="sendAttachment('DOCUMENT')">
+                    📄 Document / PDF
+                  </button>
+                  <button type="button" class="attachment-opt-btn" onclick="sendAttachment('PHOTO')">
+                    🖼️ Photo / Slip
+                  </button>
+                  <button type="button" class="attachment-opt-btn" onclick="sendAttachment('VOICE')">
+                    🎙️ Voice Note
+                  </button>
+                  <button type="button" class="attachment-opt-btn" onclick="sendAttachment('POLL')">
+                    📊 Quick Poll
+                  </button>
+                </div>
+
+                <!-- Message Text Input -->
+                <input type="text" class="chat-message-field" id="chatMessageInput" placeholder="Type an encrypted message..." onkeydown="handleChatInputKey(event)">
+
+                <!-- Send Button -->
+                <button type="button" class="btn-chat-send" onclick="handleSendChatMessage()" title="Send Encrypted Message">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+
             </div>
           </div>
         </section>
@@ -917,11 +1129,122 @@
     </div>
   </div>
 
+  <!-- Modal: Verify End-to-End Encryption Safety Code -->
+  <div class="modal-overlay" id="e2eeVerifyModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Verify Security Safety Number</h3>
+        <button class="btn-close-modal" onclick="closeModal('e2eeVerifyModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
+          To verify that messages and media in <strong id="verifyModalGroupName">Green Heights Community</strong> are genuinely end-to-end encrypted, compare the 60-digit safety number below with another resident or scan the QR code.
+        </p>
+
+        <div class="qr-code-placeholder" id="qrCodePlaceholder">
+          <svg width="110" height="110" viewBox="0 0 24 24" fill="var(--black-900)">
+            <path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h3v2h-3zm-3 2h2v3h-2zm3 3h3v3h-3zm-5 1h2v2h-2zm2-4h1v1h-1zm3-3h1v1h-1zm-1 3h1v1h-1z"/>
+          </svg>
+        </div>
+
+        <div class="safety-number-box">
+          <div style="font-size: 0.72rem; font-weight: 700; color: var(--brown-700); text-transform: uppercase; margin-bottom: 4px;">60-Digit Cryptographic Fingerprint</div>
+          <div class="safety-number-grid">
+            <span>48201</span><span>94820</span><span>18492</span><span>84920</span>
+            <span>19482</span><span>01948</span><span>58392</span><span>01948</span>
+            <span>29482</span><span>01948</span><span>20194</span><span>82019</span>
+          </div>
+          <small style="font-size: 0.74rem; color: var(--text-light);">Hardware Cipher: AES-GCM-256 + WebCrypto PBKDF2 Key Derivation</small>
+        </div>
+
+        <div style="background: var(--cream-200); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 0.78rem; color: var(--brown-900); display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <span id="fingerprintStatusText">All group member keys authenticated against local society key ring.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('e2eeVerifyModal')">Close</button>
+        <button type="button" class="btn-primary-action" onclick="handleMarkFingerprintVerified()">Mark as Verified</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Broadcast App / Society Change Notice (Admin) -->
+  <div class="modal-overlay" id="appChangeNoticeModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Broadcast App / Society Update</h3>
+        <button class="btn-close-modal" onclick="closeModal('appChangeNoticeModal')">&times;</button>
+      </div>
+      <form onsubmit="handleBroadcastAppChange(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Update Category</label>
+            <select class="form-input" id="appChangeCategory" required>
+              <option value="APP_FEATURE">App Feature Release (e.g. Encrypted Groups, Online UPI)</option>
+              <option value="POLICY_CHANGE">Society Rule & Guidelines Amendment</option>
+              <option value="SYSTEM_MAINTENANCE">Scheduled App Maintenance & Server Upgrade</option>
+              <option value="SECURITY_UPDATE">Security & Key Rotation Alert</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Update Headline</label>
+            <input type="text" class="form-input" id="appChangeHeadline" placeholder="e.g. Samaaj Platform Update: Encrypted Society Groups Live" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Detailed Notes / Resident Impact</label>
+            <textarea class="form-input" id="appChangeNotes" rows="3" placeholder="Explain what changed in the app or society policies and how residents can use it..." required></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Version Tag</label>
+              <input type="text" class="form-input" id="appChangeVersion" value="v2.4.1" placeholder="e.g. v2.4.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Audience</label>
+              <select class="form-input" id="appChangeTarget">
+                <option value="ALL">All Residents & Staff</option>
+                <option value="ADMINS">Society Admins & Committee Only</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closeModal('appChangeNoticeModal')">Cancel</button>
+          <button type="submit" class="btn-primary-action">Send In-App Notification</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: View Group Members -->
+  <div class="modal-overlay" id="chatMembersModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="groupMembersModalTitle">Group Members</h3>
+        <button class="btn-close-modal" onclick="closeModal('chatMembersModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="groupMembersCount">184 members in Green Heights Residency</div>
+        <div class="notification-list" id="groupMembersList" style="max-height: 320px;">
+          <!-- Dynamically populated via app.js -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('chatMembersModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mobile Bottom Navigation Bar (Phone Screens) -->
   <nav class="mobile-bottom-nav">
     <button class="bottom-nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
       <span>Overview</span>
+    </button>
+    <button class="bottom-nav-item" data-view="chat" onclick="navigate('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+      <span>Chat</span>
     </button>
     <button class="bottom-nav-item" data-view="complaints" onclick="navigate('complaints')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
