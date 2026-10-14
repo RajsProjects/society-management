@@ -470,10 +470,22 @@
 
     try {
       // Attempt live REST call
+      const payload = currentAuthMode === 'signup' ? {
+        email,
+        password,
+        firstName: email.split('@')[0].split('.')[0] || 'Resident',
+        lastName: (email.split('@')[0].split('.')[1]) || 'Sharma',
+        flatId: 'Tower B - 302',
+        joinCode: joinCodeInput?.value?.trim() || 'SOC-GREEN-101'
+      } : {
+        email,
+        password
+      };
+
       const res = await fetch(`${apiBase}/auth/${currentAuthMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, joinCode: joinCodeInput.value.trim() })
+        body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => null);
 
