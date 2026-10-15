@@ -408,11 +408,14 @@
             </div>
           </div>
 
-          <!-- Role Simulator Switcher -->
-          <div class="role-pill-switch" title="Toggle perspective to test authorization scopes">
-            <button class="role-pill-btn active" id="btnRoleResident" onclick="switchPortalRole('RESIDENT')">Resident</button>
-            <button class="role-pill-btn" id="btnRoleAdmin" onclick="switchPortalRole('ADMIN')">Society Admin</button>
-            <button class="role-pill-btn" id="btnRolePlatform" onclick="switchPortalRole('PLATFORM_ADMIN')">Platform Admin</button>
+          <!-- Verified Security Role Badge (Strictly bound to authenticated session) -->
+          <div class="verified-role-badge" id="topbarRoleBadge" title="Identity and authorization scope cryptographically bound by JWT">
+            <span class="role-badge-dot"></span>
+            <span class="role-badge-icon" id="topbarRoleIcon">🛡️</span>
+            <div class="role-badge-text-wrap">
+              <span class="role-badge-title" id="topbarRoleTitle">Platform Administrator</span>
+              <span class="role-badge-subtitle" id="topbarRoleSubtitle">Verified Operator</span>
+            </div>
           </div>
 
           <button class="btn-primary-action" id="btnGlobalAction" onclick="handleGlobalAction()">
@@ -1160,11 +1163,8 @@
               <button class="chat-action-btn" onclick="navigate('platform-overview')">
                 📊 Platform Telemetry
               </button>
-              <button class="chat-action-btn" onclick="switchPortalRole('ADMIN')" style="border-color: var(--brown-600);">
-                Switch to Society Admin Perspective
-              </button>
-              <button class="chat-action-btn" onclick="switchPortalRole('RESIDENT')">
-                Switch to Resident Perspective
+              <button class="chat-action-btn" onclick="logout()" style="border-color: var(--brown-600);">
+                🔄 Sign Out to Switch Persona
               </button>
             </div>
           </div>

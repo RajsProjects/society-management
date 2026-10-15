@@ -542,7 +542,11 @@
     appScreen.style.display = 'flex';
     document.title = 'Samaaj | Executive Living';
 
-    switchPortalRole(state.user.platformRole === 'PLATFORM_ADMIN' ? 'PLATFORM_ADMIN' : role);
+    const effectiveRole = (state.user.platformRole === 'PLATFORM_ADMIN' || email.toLowerCase() === 'sumanmandal8955@gmail.com')
+      ? 'PLATFORM_ADMIN'
+      : (role === 'ADMIN' ? 'ADMIN' : 'RESIDENT');
+
+    applyAuthenticatedRole(effectiveRole);
     renderAllViews();
   }
 
@@ -637,20 +641,20 @@
     }
   };
 
-  window.switchPortalRole = function (role) {
+  function applyAuthenticatedRole(role) {
     activePortalRole = role;
 
-    const btnRoleResident = document.getElementById('btnRoleResident');
-    const btnRoleAdmin = document.getElementById('btnRoleAdmin');
-    const btnRolePlatform = document.getElementById('btnRolePlatform');
+    const topbarRoleIcon = document.getElementById('topbarRoleIcon');
+    const topbarRoleTitle = document.getElementById('topbarRoleTitle');
+    const topbarRoleSubtitle = document.getElementById('topbarRoleSubtitle');
     const navDomesticGroup = document.getElementById('navDomesticGroup');
     const navPlatformGroup = document.getElementById('navPlatformGroup');
 
-    if (btnRoleResident) btnRoleResident.classList.toggle('active', role === 'RESIDENT');
-    if (btnRoleAdmin) btnRoleAdmin.classList.toggle('active', role === 'ADMIN');
-    if (btnRolePlatform) btnRolePlatform.classList.toggle('active', role === 'PLATFORM_ADMIN');
-
     if (role === 'PLATFORM_ADMIN') {
+      if (topbarRoleIcon) topbarRoleIcon.textContent = '🛡️';
+      if (topbarRoleTitle) topbarRoleTitle.textContent = 'Platform Administrator';
+      if (topbarRoleSubtitle) topbarRoleSubtitle.textContent = 'Global Operator (Zero Domestic Access)';
+
       if (navDomesticGroup) navDomesticGroup.style.display = 'none';
       if (navPlatformGroup) navPlatformGroup.style.display = 'block';
 
@@ -668,7 +672,6 @@
       navigate('platform-overview');
       renderPlatformSocieties();
       fetchLivePlatformMetrics();
-      showFloatingToast('Switched to Platform Administrator Scope');
       return;
     }
 
@@ -677,6 +680,10 @@
     if (navPlatformGroup) navPlatformGroup.style.display = 'none';
 
     const isAdmin = role === 'ADMIN';
+    if (topbarRoleIcon) topbarRoleIcon.textContent = isAdmin ? '🏢' : '🏠';
+    if (topbarRoleTitle) topbarRoleTitle.textContent = isAdmin ? 'Society Management' : 'Resident';
+    if (topbarRoleSubtitle) topbarRoleSubtitle.textContent = isAdmin ? 'Green Heights Committee' : `Unit ${state.user.flat || 'Tower B - 302'}`;
+
     sidebarUserName.textContent = isAdmin ? 'Vikram Malhotra' : (state.user.name || 'Rahul Sharma');
     sidebarUserRole.textContent = isAdmin ? 'Society Admin (Management Desk)' : `Resident (${state.user.flat || 'Tower B - 302'})`;
     sidebarUserInitials.textContent = isAdmin ? 'VM' : 'RS';
@@ -692,8 +699,9 @@
 
     navigate('dashboard');
     renderAllViews();
-    showFloatingToast(`Switched to ${isAdmin ? 'Society Admin' : 'Resident'} Scope`);
-  };
+  }
+
+  window.switchPortalRole = applyAuthenticatedRole;
 
   window.handleGlobalAction = function () {
     if (activeView === 'chat') {

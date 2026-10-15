@@ -2974,5 +2974,55 @@ body {
   border: 1px solid var(--border-light);
 }
 
+/* ── Verified Security Role Badge (Read-Only Authentication Indicator) ── */
+.verified-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--cream-100);
+  border: 1px solid var(--border-medium);
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  user-select: none;
+}
+
+.role-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.role-badge-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.role-badge-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.role-badge-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--black-900);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.role-badge-subtitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--brown-600);
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 
 
