@@ -3,7 +3,6 @@ package com.Application.SocietyManagement.core.security;
 import com.Application.SocietyManagement.core.config.SecurityConfig;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.PlatformRole;
-import com.Application.SocietyManagement.users.enums.Roles;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;

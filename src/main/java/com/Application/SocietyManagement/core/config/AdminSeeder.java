@@ -41,7 +41,7 @@ public class AdminSeeder {
             String cleanEmail = adminEmail != null ? adminEmail.replaceAll("^\"|\"$", "").trim() : "";
             String cleanPassword = adminPassword != null ? adminPassword.replaceAll("^\"|\"$", "").trim() : "";
 
-            Society saved = societyRepository.findByRegistrationNumber("PLATFORM-001")
+            societyRepository.findByRegistrationNumber("PLATFORM-001")
                     .orElseGet(() -> {
                         Society society = Society.builder()
                                 .name("CivicLink Platform")
