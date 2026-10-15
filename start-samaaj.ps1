@@ -16,7 +16,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendDir';
 
 # 2. Start Frontend HTTP server on port 5173 in its own window
 Write-Host "[2/2] Launching Frontend Server on port 5173..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendDir'; Write-Host 'Serving Samaaj Luxury Frontend on http://localhost:5173' -ForegroundColor Cyan; python -m http.server 5173"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendDir'; Write-Host 'Serving Samaaj Luxury Frontend on http://localhost:5173' -ForegroundColor Cyan; python -m http.server 5173 --bind 127.0.0.1"
 
 # 3. Open browser after brief startup pause
 Start-Sleep -Seconds 3

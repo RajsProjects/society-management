@@ -37,6 +37,7 @@ public class JwtService {
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
                 .claim("role", user.getRole() != null ? user.getRole().name() : null)
+                .claim("platformRole", user.getPlatformRole() != null ? user.getPlatformRole().name() : null)
                 .claim("status", user.getStatus() != null ? user.getStatus().name() : null)
                 .claim("societyId", user.getSocietyId())
                 .issuedAt(new Date())
@@ -55,6 +56,10 @@ public class JwtService {
 
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
+    }
+
+    public String extractPlatformRole(String token) {
+        return getClaims(token).get("platformRole", String.class);
     }
 
     public boolean isTokenExpired(String token) {

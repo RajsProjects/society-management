@@ -55,13 +55,15 @@ public class User extends BaseEntity implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<GrantedAuthority> authorities = new ArrayList<>();
-        // society role
-        if (role != null) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-        }
-        // platform role
+        // Strict Scope Isolation: Platform administrators hold only platform authority
+        // and cannot hold or inherit domestic tenant society authorities.
         if (platformRole == PlatformRole.PLATFORM_ADMIN) {
             authorities.add(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"));
+            return authorities;
+        }
+        // Society role for tenant users
+        if (role != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
         }
         return authorities;
     }

@@ -48,7 +48,7 @@ public class ComplaintController {
     @Operation(summary = "List complaints",
             description = "Admin sees all. Resident sees own only.")
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('RESIDENT', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<PagedResponse<ComplaintResponse>> getAll(
             @RequestParam(required = false) ComplaintStatus status,
             @RequestParam(required = false) ComplaintCategory category,
@@ -62,7 +62,7 @@ public class ComplaintController {
 
     @Operation(summary = "Get complaint by ID")
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('RESIDENT', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ComplaintResponse> getById(
             @PathVariable String id,
             @AuthenticationPrincipal User currentUser) {
@@ -89,7 +89,7 @@ public class ComplaintController {
     @Operation(summary = "Delete complaint",
             description = "Only OPEN complaints can be deleted by owner.")
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('RESIDENT', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> delete(
             @PathVariable String id,
             @AuthenticationPrincipal User currentUser) {

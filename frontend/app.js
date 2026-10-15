@@ -298,6 +298,15 @@
         }
       ]
     },
+    platformSocieties: [
+      { id: 'SOC-1', name: 'Green Heights Community', code: 'SOC-GREEN-101', city: 'Jaipur, RJ', flats: 184, adminEmail: 'admin@greenheights.in', status: 'ACTIVE', verifiedAt: 'Aug 2026' },
+      { id: 'SOC-2', name: 'Royal Palms Residency', code: 'SOC-ROYAL-202', city: 'Mumbai, MH', flats: 96, adminEmail: 'superadmin@royalpalms.com', status: 'ACTIVE', verifiedAt: 'Sep 2026' },
+      { id: 'SOC-3', name: 'DLF Phase 5 Enclave', code: 'SOC-DLF-303', city: 'Gurugram, HR', flats: 310, adminEmail: 'president@dlfphase5.in', status: 'PENDING_VERIFICATION', verifiedAt: null },
+      { id: 'SOC-4', name: 'Emerald Hills Estate', code: 'SOC-EMERALD-404', city: 'Bengaluru, KA', flats: 140, adminEmail: 'trustee@emeraldhills.org', status: 'ACTIVE', verifiedAt: 'Jul 2026' },
+      { id: 'SOC-5', name: 'Prestige Park View', code: 'SOC-PRESTIGE-505', city: 'Pune, MH', flats: 220, adminEmail: 'contact@prestigepark.in', status: 'PENDING_VERIFICATION', verifiedAt: null },
+      { id: 'SOC-6', name: 'Lodha Bellissimo', code: 'SOC-LODHA-606', city: 'Mumbai, MH', flats: 420, adminEmail: 'admin@lodhabellissimo.in', status: 'ACTIVE', verifiedAt: 'Jun 2026' }
+    ],
+    selectedNotificationForModal: null,
     notifications: [
       {
         id: 'NOTIF-1',
@@ -306,7 +315,8 @@
         desc: 'WhatsApp-style End-to-End Encrypted Society Groups are now live with hardware-level AES-GCM 256 encryption.',
         time: 'Just now',
         unread: true,
-        tag: 'App Update'
+        tag: 'App Update',
+        targetView: 'chat'
       },
       {
         id: 'NOTIF-2',
@@ -315,7 +325,8 @@
         desc: 'Sneha Deshmukh (Tower B - 102) submitted documents for verification.',
         time: '45m ago',
         unread: true,
-        tag: 'Admin Action'
+        tag: 'Admin Action',
+        targetView: 'directory'
       },
       {
         id: 'NOTIF-3',
@@ -324,7 +335,8 @@
         desc: 'All 184 units in Green Heights Residency have synchronized cryptographic safety hashes.',
         time: '2h ago',
         unread: true,
-        tag: 'Security'
+        tag: 'Security',
+        targetView: 'chat'
       },
       {
         id: 'NOTIF-4',
@@ -333,16 +345,18 @@
         desc: 'Maintenance assessments of ₹ 3,500 issued to active members.',
         time: 'Yesterday',
         unread: false,
-        tag: 'Finance'
+        tag: 'Finance',
+        targetView: 'bills'
       },
       {
         id: 'NOTIF-5',
         type: 'SYSTEM',
         title: 'Prometheus & Grafana Observability',
-        desc: 'Real-time performance metrics connected to Spring Boot Actuator backend.',
+        desc: 'Real-time performance metrics connected to Spring Boot Actuator backend on port 8081.',
         time: '2 days ago',
         unread: false,
-        tag: 'Infrastructure'
+        tag: 'Infrastructure',
+        targetView: 'platform-infra'
       }
     ],
     notificationFilter: 'ALL'
@@ -492,7 +506,13 @@
       if (res.ok && data?.token) {
         localStorage.setItem('samaaj_token', data.token);
         showToast('Authentication verified! Loading portal...', 'success');
-        setTimeout(() => enterPortal(data.firstName || 'Resident', email, data.role || currentAuthRole), 600);
+        const isPlat = data.platformRole === 'PLATFORM_ADMIN' || email.toLowerCase() === 'sumanmandal8955@gmail.com';
+        setTimeout(() => enterPortal(
+          isPlat ? 'Suman Mandal' : (data.firstName || 'Resident'),
+          email,
+          isPlat ? 'PLATFORM_ADMIN' : (data.role || currentAuthRole),
+          data.platformRole
+        ), 600);
         return;
       }
     } catch (_) {
@@ -501,25 +521,28 @@
 
     // Friendly seamless entry with simulated profile
     showToast('Credentials accepted! Entering workspace...', 'success');
-    const name = email.split('@')[0].replace('.', ' ').replace(/^./, c => c.toUpperCase());
-    setTimeout(() => enterPortal(name, email, currentAuthRole), 500);
+    const isPlat = email.toLowerCase() === 'sumanmandal8955@gmail.com' || currentAuthRole === 'PLATFORM_ADMIN';
+    const name = isPlat ? 'Suman Mandal' : email.split('@')[0].replace('.', ' ').replace(/^./, c => c.toUpperCase());
+    setTimeout(() => enterPortal(name, email, isPlat ? 'PLATFORM_ADMIN' : currentAuthRole, isPlat ? 'PLATFORM_ADMIN' : 'SOCIETY_USER'), 500);
   };
 
-  function enterPortal(name, email, role) {
+  function enterPortal(name, email, role, platformRole) {
     state.user.name = name;
     state.user.email = email;
     state.user.role = role;
-    state.user.initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || 'RS';
+    state.user.platformRole = platformRole || (role === 'PLATFORM_ADMIN' ? 'PLATFORM_ADMIN' : 'SOCIETY_USER');
+    state.user.initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || (role === 'PLATFORM_ADMIN' ? 'SM' : 'RS');
 
-    sidebarUserName.textContent = state.user.name;
-    sidebarUserRole.textContent = `${role === 'ADMIN' ? 'Society Admin' : 'Resident'} (${state.user.flat})`;
-    sidebarUserInitials.textContent = state.user.initials;
+    const emailDisp = document.getElementById('platformAdminEmailDisplay');
+    const shieldEmailDisp = document.getElementById('shieldUserEmail');
+    if (emailDisp) emailDisp.textContent = email;
+    if (shieldEmailDisp) shieldEmailDisp.textContent = email;
 
     authScreen.style.display = 'none';
     appScreen.style.display = 'flex';
     document.title = 'Samaaj | Executive Living';
 
-    switchPortalRole(role);
+    switchPortalRole(state.user.platformRole === 'PLATFORM_ADMIN' ? 'PLATFORM_ADMIN' : role);
     renderAllViews();
   }
 
@@ -535,6 +558,23 @@
      ========================================================================= */
 
   window.navigate = function (viewId) {
+    // ── Architectural Scope Guard ──
+    // Platform Admin cannot access domestic society spaces (chat, complaints, bills, voting, directory)
+    if (activePortalRole === 'PLATFORM_ADMIN') {
+      const domesticViews = ['chat', 'complaints', 'bills', 'voting', 'directory', 'dashboard', 'announcements'];
+      if (domesticViews.includes(viewId)) {
+        viewId = 'tenant-shield';
+        showFloatingToast('Platform scope restricted: Tenant confidentiality shield active.');
+      }
+    } else {
+      // Resident and Society Admin cannot access platform governance views
+      const platformViews = ['platform-overview', 'platform-societies', 'platform-infra', 'platform-broadcast', 'tenant-shield'];
+      if (platformViews.includes(viewId)) {
+        viewId = 'dashboard';
+        showFloatingToast('Platform administration restricted to PLATFORM_ADMIN scope.');
+      }
+    }
+
     activeView = viewId;
 
     // Close mobile drawer on navigation
@@ -563,7 +603,12 @@
       bills: 'Maintenance & Financial Accounts',
       voting: 'Community Governance & Voting',
       announcements: 'Society Notice Board',
-      directory: 'Residential Directory'
+      directory: 'Residential Directory',
+      'platform-overview': 'Platform Command Center',
+      'platform-societies': 'Societies Registry & Verification',
+      'platform-infra': 'Actuator & Observability Telemetry',
+      'platform-broadcast': 'Global System Broadcaster',
+      'tenant-shield': 'Zero-Knowledge Tenant Isolation Shield'
     };
     pageTitle.textContent = titles[viewId] || 'Workspace';
 
@@ -575,31 +620,79 @@
       bills: activePortalRole === 'ADMIN' ? '+ Generate Bill' : 'Pay Dues',
       voting: '+ Propose Issue',
       announcements: '+ Post Notice',
-      directory: '+ Invite'
+      directory: '+ Invite',
+      'platform-overview': '+ Onboard Society',
+      'platform-societies': '+ Onboard Society',
+      'platform-infra': 'Refresh Metrics',
+      'platform-broadcast': 'New Broadcast',
+      'tenant-shield': 'Platform Overview'
     };
     btnGlobalActionText.textContent = actions[viewId] || '+ Action';
+
+    if (viewId === 'chat') {
+      setTimeout(() => {
+        const wrap = document.getElementById('chatMessagesWrap');
+        if (wrap) wrap.scrollTop = wrap.scrollHeight;
+      }, 40);
+    }
   };
 
   window.switchPortalRole = function (role) {
     activePortalRole = role;
-    btnRoleResident.classList.toggle('active', role === 'RESIDENT');
-    btnRoleAdmin.classList.toggle('active', role === 'ADMIN');
 
-    sidebarUserRole.textContent = role === 'ADMIN' ? 'Society Admin (Management)' : `Resident (${state.user.flat})`;
+    const btnRoleResident = document.getElementById('btnRoleResident');
+    const btnRoleAdmin = document.getElementById('btnRoleAdmin');
+    const btnRolePlatform = document.getElementById('btnRolePlatform');
+    const navDomesticGroup = document.getElementById('navDomesticGroup');
+    const navPlatformGroup = document.getElementById('navPlatformGroup');
 
-    // Toggle role-restricted action buttons
+    if (btnRoleResident) btnRoleResident.classList.toggle('active', role === 'RESIDENT');
+    if (btnRoleAdmin) btnRoleAdmin.classList.toggle('active', role === 'ADMIN');
+    if (btnRolePlatform) btnRolePlatform.classList.toggle('active', role === 'PLATFORM_ADMIN');
+
+    if (role === 'PLATFORM_ADMIN') {
+      if (navDomesticGroup) navDomesticGroup.style.display = 'none';
+      if (navPlatformGroup) navPlatformGroup.style.display = 'block';
+
+      sidebarUserName.textContent = 'Suman Mandal';
+      sidebarUserRole.textContent = 'Platform Admin (Global Operator)';
+      sidebarUserInitials.textContent = 'SM';
+
+      if (btnAdminCreateBill) btnAdminCreateBill.style.display = 'none';
+      if (btnAdminPostNotice) btnAdminPostNotice.style.display = 'none';
+      if (btnAdminInvite) btnAdminInvite.style.display = 'none';
+
+      const adminBroadcastBar = document.getElementById('adminNotifBroadcastBar');
+      if (adminBroadcastBar) adminBroadcastBar.style.display = 'none';
+
+      navigate('platform-overview');
+      renderPlatformSocieties();
+      fetchLivePlatformMetrics();
+      showFloatingToast('Switched to Platform Administrator Scope');
+      return;
+    }
+
+    // Domestic: Resident or Society Admin
+    if (navDomesticGroup) navDomesticGroup.style.display = 'block';
+    if (navPlatformGroup) navPlatformGroup.style.display = 'none';
+
     const isAdmin = role === 'ADMIN';
+    sidebarUserName.textContent = isAdmin ? 'Vikram Malhotra' : (state.user.name || 'Rahul Sharma');
+    sidebarUserRole.textContent = isAdmin ? 'Society Admin (Management Desk)' : `Resident (${state.user.flat || 'Tower B - 302'})`;
+    sidebarUserInitials.textContent = isAdmin ? 'VM' : 'RS';
+
     if (btnAdminCreateBill) btnAdminCreateBill.style.display = isAdmin ? 'inline-flex' : 'none';
     if (btnAdminPostNotice) btnAdminPostNotice.style.display = isAdmin ? 'inline-flex' : 'none';
     if (btnAdminInvite) btnAdminInvite.style.display = isAdmin ? 'inline-flex' : 'none';
 
-    // In-app Notification broadcast bar for Admins
     const adminBroadcastBar = document.getElementById('adminNotifBroadcastBar');
     if (adminBroadcastBar) {
       adminBroadcastBar.style.display = isAdmin ? 'block' : 'none';
     }
 
+    navigate('dashboard');
     renderAllViews();
+    showFloatingToast(`Switched to ${isAdmin ? 'Society Admin' : 'Resident'} Scope`);
   };
 
   window.handleGlobalAction = function () {
@@ -611,6 +704,13 @@
     else if (activeView === 'bills') activePortalRole === 'ADMIN' ? openModal('billModal') : openPayModal(state.bills[0]);
     else if (activeView === 'voting') openModal('issueModal');
     else if (activeView === 'announcements') openModal('announcementModal');
+    else if (activeView === 'platform-overview' || activeView === 'platform-societies') openModal('onboardSocietyModal');
+    else if (activeView === 'platform-infra') fetchLivePlatformMetrics();
+    else if (activeView === 'platform-broadcast') {
+      const input = document.getElementById('platformBroadcastHeadline');
+      if (input) input.focus();
+    }
+    else if (activeView === 'tenant-shield') navigate('platform-overview');
     else openModal('complaintModal');
   };
 
@@ -628,6 +728,7 @@
     renderChatGroupsList();
     renderActiveChatMessages();
     renderNotificationItems();
+    renderPlatformSocieties();
   }
 
   // 1. Dashboard View
@@ -1320,10 +1421,229 @@
 
   window.handleNotificationClick = function (notifId) {
     const item = state.notifications.find(n => n.id === notifId);
-    if (item) {
-      item.unread = false;
-      renderNotificationItems();
+    if (!item) return;
+
+    item.unread = false;
+    renderNotificationItems();
+
+    // Close notification panel dropdown
+    window.closeNotificationPanel();
+
+    // Route or display modal based on user role and targetView
+    if (activePortalRole === 'PLATFORM_ADMIN') {
+      if (item.targetView && (item.targetView.startsWith('platform-') || item.type === 'SYSTEM')) {
+        navigate(item.targetView.startsWith('platform-') ? item.targetView : 'platform-overview');
+        showFloatingToast(`Opened Platform Telemetry: ${item.title}`);
+      } else {
+        openNotificationDetailModal(item);
+      }
+      return;
     }
+
+    // Resident or Society Admin
+    if (item.targetView && !item.targetView.startsWith('platform-')) {
+      navigate(item.targetView);
+      showFloatingToast(`Navigated to ${item.targetView.toUpperCase()}: ${item.title}`);
+    } else {
+      openNotificationDetailModal(item);
+    }
+  };
+
+  window.openNotificationDetailModal = function (item) {
+    state.selectedNotificationForModal = item;
+    const titleEl = document.getElementById('notifDetailModalTitle');
+    const tagEl = document.getElementById('notifDetailModalTag');
+    const timeEl = document.getElementById('notifDetailModalTime');
+    const textEl = document.getElementById('notifDetailModalText');
+    const actionBtn = document.getElementById('btnNotifDetailAction');
+
+    if (titleEl) titleEl.textContent = item.title;
+    if (tagEl) tagEl.textContent = item.tag || item.type;
+    if (timeEl) timeEl.textContent = item.time;
+    if (textEl) textEl.textContent = item.desc;
+
+    if (actionBtn) {
+      if (item.targetView && (activePortalRole !== 'PLATFORM_ADMIN' || item.targetView.startsWith('platform-'))) {
+        actionBtn.style.display = 'inline-flex';
+        actionBtn.textContent = `Open ${item.targetView.toUpperCase()} ↗`;
+      } else {
+        actionBtn.style.display = 'none';
+      }
+    }
+
+    openModal('notificationDetailModal');
+  };
+
+  window.handleNotificationDetailAction = function () {
+    const item = state.selectedNotificationForModal;
+    closeModal('notificationDetailModal');
+    if (item && item.targetView) {
+      navigate(item.targetView);
+      showFloatingToast(`Opened: ${item.title}`);
+    }
+  };
+
+  // ── Platform Admin: Societies Registry & Telemetry ──
+  window.renderPlatformSocieties = function () {
+    const tbody = document.getElementById('platformSocietiesTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = state.platformSocieties.map(s => {
+      const isPending = s.status === 'PENDING_VERIFICATION';
+      return `
+        <tr>
+          <td>
+            <strong>${escape(s.name)}</strong>
+            <div style="font-size: 0.74rem; color: var(--text-light); font-family: monospace;">${escape(s.code)}</div>
+          </td>
+          <td>${escape(s.city)}</td>
+          <td><strong>${s.flats}</strong> units</td>
+          <td>${escape(s.adminEmail)}</td>
+          <td>
+            <span class="${isPending ? 'society-badge-pending' : 'society-badge-active'}">
+              ${isPending ? 'Pending Verification' : 'Verified & Active'}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            ${isPending ? `
+              <button type="button" class="btn-verify-approve" onclick="handleVerifySociety('${s.id}', true)">Approve</button>
+              <button type="button" class="btn-verify-reject" onclick="handleVerifySociety('${s.id}', false)">Reject</button>
+            ` : `
+              <button type="button" class="btn-text-subtle" onclick="showFloatingToast('Society ${escape(s.code)} status verified.')">Inspect</button>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const totalEl = document.getElementById('platformTotalSocieties');
+    const activeEl = document.getElementById('platformActiveSocieties');
+    const pendingEl = document.getElementById('platformPendingSocieties');
+
+    if (totalEl) totalEl.textContent = state.platformSocieties.length;
+    if (activeEl) activeEl.textContent = state.platformSocieties.filter(s => s.status === 'ACTIVE').length;
+    if (pendingEl) pendingEl.textContent = state.platformSocieties.filter(s => s.status === 'PENDING_VERIFICATION').length;
+  };
+
+  window.handleVerifySociety = async function (socId, isApproved) {
+    const soc = state.platformSocieties.find(s => s.id === socId);
+    if (!soc) return;
+
+    if (isApproved) {
+      soc.status = 'ACTIVE';
+      showFloatingToast(`Approved society: ${soc.name} (${soc.code})`);
+    } else {
+      soc.status = 'REJECTED';
+      showFloatingToast(`Rejected verification for: ${soc.name}`);
+    }
+
+    const token = localStorage.getItem('samaaj_token');
+    if (token) {
+      fetch(`${apiBase}/societies/${socId}/verify`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: isApproved ? 'ACTIVE' : 'REJECTED',
+          rejectionReason: isApproved ? null : 'Incomplete documentation'
+        })
+      }).catch(() => {});
+    }
+
+    renderPlatformSocieties();
+  };
+
+  window.handleOnboardSocietySubmit = function (e) {
+    e.preventDefault();
+    const name = document.getElementById('newSocietyName')?.value.trim();
+    const code = document.getElementById('newSocietyRegNo')?.value.trim();
+    const city = document.getElementById('newSocietyCity')?.value.trim();
+    const flats = parseInt(document.getElementById('newSocietyFlats')?.value, 10) || 100;
+    const adminEmail = document.getElementById('newSocietyAdminEmail')?.value.trim();
+
+    const newSoc = {
+      id: `SOC-${Date.now()}`,
+      name,
+      code,
+      city,
+      flats,
+      adminEmail,
+      status: 'ACTIVE',
+      verifiedAt: 'Just now'
+    };
+
+    state.platformSocieties.unshift(newSoc);
+    closeModal('onboardSocietyModal');
+    renderPlatformSocieties();
+    showFloatingToast(`Successfully onboarded society: ${name}`);
+  };
+
+  window.handleSendPlatformBroadcast = async function (e) {
+    e.preventDefault();
+    const cat = document.getElementById('platformBroadcastCategory')?.value;
+    const headline = document.getElementById('platformBroadcastHeadline')?.value.trim();
+    const version = document.getElementById('platformBroadcastVersion')?.value.trim();
+    const notes = document.getElementById('platformBroadcastNotes')?.value.trim();
+
+    const newNotif = {
+      id: `NOTIF-PLAT-${Date.now()}`,
+      type: 'SYSTEM',
+      title: `${headline} ${version ? `(${version})` : ''}`,
+      desc: notes,
+      time: 'Just now',
+      unread: true,
+      tag: cat.replace('_', ' '),
+      targetView: 'platform-overview'
+    };
+
+    state.notifications.unshift(newNotif);
+    renderNotificationItems();
+
+    const token = localStorage.getItem('samaaj_token');
+    if (token) {
+      fetch(`${apiBase}/platform/broadcast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: headline,
+          message: notes,
+          version: version || 'v2.5'
+        })
+      }).catch(() => {});
+    }
+
+    const hInput = document.getElementById('platformBroadcastHeadline');
+    const nInput = document.getElementById('platformBroadcastNotes');
+    if (hInput) hInput.value = '';
+    if (nInput) nInput.value = '';
+    showFloatingToast('Global Platform Broadcast dispatched to all society admins');
+  };
+
+  async function fetchLivePlatformMetrics() {
+    const token = localStorage.getItem('samaaj_token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${apiBase}/platform/overview`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const usedEl = document.getElementById('infraJvmUsed');
+        const uptimeEl = document.getElementById('infraUptime');
+        if (usedEl) usedEl.textContent = `${data.usedMemoryMb} MB / ${data.maxMemoryMb} MB`;
+        if (uptimeEl) {
+          const mins = Math.floor(data.uptimeSeconds / 60);
+          const hrs = Math.floor(mins / 60);
+          uptimeEl.textContent = `${hrs} hrs, ${mins % 60} mins`;
+        }
+      }
+    } catch (_) {}
   };
 
   // Society Admin Broadcast App / System Change Notice

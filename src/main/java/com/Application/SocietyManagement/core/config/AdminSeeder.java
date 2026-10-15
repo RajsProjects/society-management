@@ -64,25 +64,30 @@ public class AdminSeeder {
 
             userRepository.findByEmail(cleanEmail).ifPresentOrElse(existingAdmin -> {
                 boolean modified = false;
-                if (existingAdmin.getRole() != Roles.SUPER_ADMIN) {
-                    existingAdmin.setRole(Roles.SUPER_ADMIN);
-                    modified = true;
-                }
                 if (existingAdmin.getPlatformRole() != PlatformRole.PLATFORM_ADMIN) {
                     existingAdmin.setPlatformRole(PlatformRole.PLATFORM_ADMIN);
+                    modified = true;
+                }
+                // Strict scope isolation: Platform administrator must not have tenant-level roles or society bindings
+                if (existingAdmin.getRole() != null) {
+                    existingAdmin.setRole(null);
+                    modified = true;
+                }
+                if (existingAdmin.getSocietyId() != null) {
+                    existingAdmin.setSocietyId(null);
                     modified = true;
                 }
                 if (existingAdmin.getStatus() != Status.ACTIVE) {
                     existingAdmin.setStatus(Status.ACTIVE);
                     modified = true;
                 }
-                if (existingAdmin.getSocietyId() == null || existingAdmin.getSocietyId().isBlank()) {
-                    existingAdmin.setSocietyId(saved.getId());
+                if (!passwordEncoder.matches(cleanPassword, existingAdmin.getPasswordHash())) {
+                    existingAdmin.setPasswordHash(passwordEncoder.encode(cleanPassword));
                     modified = true;
                 }
                 if (modified) {
                     userRepository.save(existingAdmin);
-                    log.info("Platform admin roles/society synced for: {}", cleanEmail);
+                    log.info("Platform admin roles/credentials synced for: {}", cleanEmail);
                 } else {
                     log.info("Platform admin verified: {}", cleanEmail);
                 }
@@ -92,10 +97,10 @@ public class AdminSeeder {
                         .passwordHash(passwordEncoder.encode(cleanPassword))
                         .firstName("Platform")
                         .lastName("Admin")
-                        .role(Roles.SUPER_ADMIN)
+                        .role(null)
                         .platformRole(PlatformRole.PLATFORM_ADMIN)
                         .status(Status.ACTIVE)
-                        .societyId(saved.getId())
+                        .societyId(null)
                         .build();
                 userRepository.save(admin);
                 log.info("Platform admin seeded: {}", cleanEmail);
