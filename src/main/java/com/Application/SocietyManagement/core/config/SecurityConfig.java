@@ -35,7 +35,6 @@ import java.util.Arrays;
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     // NO JwtAuthenticationFilter field here
@@ -43,6 +42,16 @@ public class SecurityConfig {
     private final JwtService jwtService;
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService,
+                          JwtService jwtService,
+                          RateLimitingFilter rateLimitingFilter,
+                          SubscriptionEnforcementFilter subscriptionEnforcementFilter) {
+        this.customUserDetailsService = customUserDetailsService;
+        this.jwtService = jwtService;
+        this.rateLimitingFilter = rateLimitingFilter;
+        this.subscriptionEnforcementFilter = subscriptionEnforcementFilter;
+    }
 
     @Value("${security.pepper}")
     private String pepper;

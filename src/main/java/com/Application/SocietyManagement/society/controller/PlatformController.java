@@ -6,9 +6,7 @@ import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Builder;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,13 +18,17 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/platform")
-@RequiredArgsConstructor
 @Tag(name = "Platform Governance", description = "Platform Administrator oversight & infrastructure management")
 @PreAuthorize("hasRole('PLATFORM_ADMIN')")
 public class PlatformController {
 
     private final SocietyRepository societyRepository;
     private final UserRepository userRepository;
+
+    public PlatformController(SocietyRepository societyRepository, UserRepository userRepository) {
+        this.societyRepository = societyRepository;
+        this.userRepository = userRepository;
+    }
 
     @Operation(summary = "Get Platform Overview & System Health",
             description = "Returns platform-wide society metrics, infrastructure telemetry, and zero-knowledge status.")
@@ -88,6 +90,8 @@ public class PlatformController {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PlatformOverviewResponse {
         private long totalSocieties;
         private long activeSocieties;
