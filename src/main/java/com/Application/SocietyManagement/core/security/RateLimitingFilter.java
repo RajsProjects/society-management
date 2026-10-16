@@ -17,10 +17,13 @@ import java.time.Duration;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final RedisTemplate<String, String> redisTemplate;
+
+    public RateLimitingFilter(RedisTemplate<String, String> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     @org.springframework.beans.factory.annotation.Value("${security.rate-limit.max-requests:120}")
     private int maxRequests = 120;
