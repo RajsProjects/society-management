@@ -51,12 +51,21 @@ spring:
         min-size: ${MONGO_POOL_MIN_SIZE:50}
         max-wait-time-ms: ${MONGO_POOL_MAX_WAIT_MS:10000}
         max-idle-time-ms: ${MONGO_POOL_MAX_IDLE_MS:30000}
+    redis:
+      repositories:
+        enabled: false
   redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
-      connect-timeout: 2000ms
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    connect-timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: ${REDIS_POOL_MAX_ACTIVE:64}
+        max-idle: ${REDIS_POOL_MAX_IDLE:16}
+        min-idle: ${REDIS_POOL_MIN_IDLE:4}
+        max-wait: 2000ms
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}

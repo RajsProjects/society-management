@@ -36,6 +36,8 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
+
     // NO JwtAuthenticationFilter field here
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtService jwtService;
@@ -117,7 +119,7 @@ public class SecurityConfig {
                     "message", authException.getMessage() != null ? authException.getMessage() : "Full authentication is required to access this resource",
                     "path", request.getRequestURI()
             );
-            new com.fasterxml.jackson.databind.ObjectMapper().writeValue(response.getOutputStream(), body);
+            OBJECT_MAPPER.writeValue(response.getOutputStream(), body);
         };
     }
 
@@ -133,7 +135,7 @@ public class SecurityConfig {
                     "message", accessDeniedException.getMessage() != null ? accessDeniedException.getMessage() : "Access is denied",
                     "path", request.getRequestURI()
             );
-            new com.fasterxml.jackson.databind.ObjectMapper().writeValue(response.getOutputStream(), body);
+            OBJECT_MAPPER.writeValue(response.getOutputStream(), body);
         };
     }
 
