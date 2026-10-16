@@ -98,7 +98,13 @@ public class AuthService {
 
         return AuthResponse.builder()
                 .token(token)
-                .role(user.getRole().name())
+                .type("Bearer")
+                .role(user.getRole() != null ? user.getRole().name() : null)
+                .platformRole(user.getPlatformRole() != null ? user.getPlatformRole().name() : null)
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .societyId(user.getSocietyId())
+                .message("Login successful")
                 .build();
     }
 }

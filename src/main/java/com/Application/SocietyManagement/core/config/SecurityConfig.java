@@ -6,7 +6,6 @@ import com.Application.SocietyManagement.core.security.RateLimitingFilter;
 import com.Application.SocietyManagement.core.security.SubscriptionEnforcementFilter;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,14 +34,25 @@ import java.util.Arrays;
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
 
     // NO JwtAuthenticationFilter field here
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtService jwtService;
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService,
+                          JwtService jwtService,
+                          RateLimitingFilter rateLimitingFilter,
+                          SubscriptionEnforcementFilter subscriptionEnforcementFilter) {
+        this.customUserDetailsService = customUserDetailsService;
+        this.jwtService = jwtService;
+        this.rateLimitingFilter = rateLimitingFilter;
+        this.subscriptionEnforcementFilter = subscriptionEnforcementFilter;
+    }
 
     @Value("${security.pepper}")
     private String pepper;
@@ -85,7 +95,6 @@ public class SecurityConfig {
     @Bean
     public RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.withDefaultRolePrefix()
-                .role("PLATFORM_ADMIN").implies("SUPER_ADMIN")
                 .role("SUPER_ADMIN").implies("ADMIN")
                 .role("ADMIN").implies("RESIDENT")
                 .build();
@@ -110,7 +119,7 @@ public class SecurityConfig {
                     "message", authException.getMessage() != null ? authException.getMessage() : "Full authentication is required to access this resource",
                     "path", request.getRequestURI()
             );
-            new com.fasterxml.jackson.databind.ObjectMapper().writeValue(response.getOutputStream(), body);
+            OBJECT_MAPPER.writeValue(response.getOutputStream(), body);
         };
     }
 
@@ -126,7 +135,7 @@ public class SecurityConfig {
                     "message", accessDeniedException.getMessage() != null ? accessDeniedException.getMessage() : "Access is denied",
                     "path", request.getRequestURI()
             );
-            new com.fasterxml.jackson.databind.ObjectMapper().writeValue(response.getOutputStream(), body);
+            OBJECT_MAPPER.writeValue(response.getOutputStream(), body);
         };
     }
 

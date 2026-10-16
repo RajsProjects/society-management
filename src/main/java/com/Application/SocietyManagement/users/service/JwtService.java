@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.users.service;
 
 import com.Application.SocietyManagement.users.entity.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,15 +22,20 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long EXPIRATION;
 
+    private SecretKey signingKey;
+    private JwtParser jwtParser;
+
     @PostConstruct
     public void validateConfiguration() {
         if (SECRET != null && !SECRET.isBlank() && SECRET.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("JWT secret must be at least 32 bytes (256 bits) long for HMAC-SHA algorithms.");
         }
+        this.signingKey = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        this.jwtParser = Jwts.parser().verifyWith(this.signingKey).build();
     }
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        return this.signingKey != null ? this.signingKey : Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(User user) {
@@ -37,6 +43,7 @@ public class JwtService {
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
                 .claim("role", user.getRole() != null ? user.getRole().name() : null)
+                .claim("platformRole", user.getPlatformRole() != null ? user.getPlatformRole().name() : null)
                 .claim("status", user.getStatus() != null ? user.getStatus().name() : null)
                 .claim("societyId", user.getSocietyId())
                 .issuedAt(new Date())
@@ -57,6 +64,10 @@ public class JwtService {
         return getClaims(token).get("role", String.class);
     }
 
+    public String extractPlatformRole(String token) {
+        return getClaims(token).get("platformRole", String.class);
+    }
+
     public boolean isTokenExpired(String token) {
         try {
             return getClaims(token).getExpiration().before(new Date());
@@ -64,20 +75,24 @@ public class JwtService {
             return true; // expired or invalid token
         }
     }
-    public boolean isValid(String token) {
+    public Claims parseAndValidateClaims(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
         try {
-            getClaims(token);
-            return true;
+            JwtParser parser = this.jwtParser != null ? this.jwtParser : Jwts.parser().verifyWith(getSigningKey()).build();
+            return parser.parseSignedClaims(token).getPayload();
         } catch (Exception e) {
-            return false;
+            return null;
         }
     }
 
+    public boolean isValid(String token) {
+        return parseAndValidateClaims(token) != null;
+    }
+
     private Claims getClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        JwtParser parser = this.jwtParser != null ? this.jwtParser : Jwts.parser().verifyWith(getSigningKey()).build();
+        return parser.parseSignedClaims(token).getPayload();
     }
 }

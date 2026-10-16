@@ -55,7 +55,7 @@ public class SocietyController {
     @Operation(summary = "Get my society",
             description = "Returns current user's society details.")
     @GetMapping("/me")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('RESIDENT', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<SocietyResponse> getMySociety() {
         return ResponseEntity.ok(societyService.getMySociety());
     }

@@ -1,17 +1,19 @@
 package com.Application.SocietyManagement.users.service;
 
 import com.Application.SocietyManagement.users.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
     private final java.util.Map<String, CachedUser> cache = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long CACHE_TTL_MS = 60_000L; // 1 minute in-memory cache
 

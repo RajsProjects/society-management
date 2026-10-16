@@ -698,5 +698,26 @@ In the baseline user interface:
 | **Micro-Interactions & Feedback** | Standard browser alert boxes. | Glassmorphic floating toast notification (`.app-floating-toast`) with checkmark iconography, plus clipboard auto-copy for Society Codes and UPI references. |
 | **Aesthetic Depth & Polish** | Flat borders and standard badges. | Elevated luxury palette with live glowing pulse on active voting badges (`.live-pulse`), smooth card hover lift (`translateY(-2px)`), and bespoke warm brown scrollbars. |
 
+---
+
+## 14. Host Toolchain & Runtime Shell Upgrade: PowerShell v7.6.7 (October 16, 2026)
+
+### 14.1. Motivation & Context
+The development and build environment uses Microsoft PowerShell (`pwsh`) for executing build tooling, Maven tasks, Docker orchestration, and automation scripts. An update to the latest patch release (v7.6.7) was requested from the official [PowerShell GitHub Releases repository](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.7).
+
+---
+
+### 14.2. Upgrade Details & Verification (Before vs. After)
+
+| Dimension | Before Upgrade | After Upgrade |
+| :--- | :--- | :--- |
+| **PowerShell Version (`$PSVersionTable.PSVersion`)** | `7.6.6` | `7.6.7` |
+| **Git Commit Identifier** | `7.6.6` | `7.6.7` |
+| **Package Distribution** | `Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe` | `Microsoft.PowerShell_7.6.7.0_x64__8wekyb3d8bbwe` |
+| **Package Source** | Windows Apps / Winget (`Microsoft.PowerShell`) | Winget / GitHub Release v7.6.7 binary payload |
+| **Binary Location** | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.6.0_x64...` | `C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.7.0_x64__8wekyb3d8bbwe\pwsh.exe` |
+| **Runtime Execution Status** | Operational | Verified (`$PSVersionTable` returns PSVersion 7.6.7, PSEdition Core) |
+
+
 
 

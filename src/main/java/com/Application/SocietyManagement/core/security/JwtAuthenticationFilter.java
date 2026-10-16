@@ -5,11 +5,11 @@ import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.service.CustomUserDetailsService;
 import com.Application.SocietyManagement.users.service.JwtService;
 import org.springframework.lang.NonNull;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,11 +18,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+
+    public JwtAuthenticationFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -39,14 +43,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = header.substring(7);
 
-        if (!jwtService.isValid(token)) {
+        Claims claims = jwtService.parseAndValidateClaims(token);
+        if (claims == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Invalid or expired token\",\"path\":\"" + request.getRequestURI() + "\"}");
             return;
         }
 
-        String email = jwtService.extractEmail(token);
+        String email = claims.getSubject();
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
         if (userDetails != null) {
@@ -63,7 +68,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
-        String societyId = jwtService.extractSocietyId(token);
+        String societyId = claims.get("societyId", String.class);
         if (societyId == null && userDetails instanceof User user) {
             societyId = user.getSocietyId();
         }

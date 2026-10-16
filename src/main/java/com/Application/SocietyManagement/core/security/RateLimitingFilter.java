@@ -5,7 +5,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -17,10 +16,13 @@ import java.time.Duration;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final RedisTemplate<String, String> redisTemplate;
+
+    public RateLimitingFilter(RedisTemplate<String, String> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     @org.springframework.beans.factory.annotation.Value("${security.rate-limit.max-requests:120}")
     private int maxRequests = 120;
@@ -56,11 +58,6 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             Long count = redisTemplate.opsForValue().increment(key);
             if (count != null && count == 1L) {
                 redisTemplate.expire(key, WINDOW);
-            } else if (count != null && count > 1L) {
-                Long ttl = redisTemplate.getExpire(key);
-                if (ttl == null || ttl < 0) {
-                    redisTemplate.expire(key, WINDOW);
-                }
             }
 
             if (count != null && count > maxRequests) {

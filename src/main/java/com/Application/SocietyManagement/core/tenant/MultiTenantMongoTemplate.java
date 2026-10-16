@@ -37,6 +37,15 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
 
     private static final String TENANT_KEY = "societyId";
     private static final Map<Class<?>, Field> TENANT_FIELD_CACHE = new ConcurrentHashMap<>();
+    private static final Field NO_TENANT_FIELD;
+
+    static {
+        try {
+            NO_TENANT_FIELD = MultiTenantMongoTemplate.class.getDeclaredField("NO_TENANT_FIELD");
+        } catch (NoSuchFieldException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     public MultiTenantMongoTemplate(MongoDatabaseFactory mongoDbFactory, MongoConverter mongoConverter) {
         super(mongoDbFactory, mongoConverter);
@@ -317,16 +326,22 @@ public class MultiTenantMongoTemplate extends MongoTemplate {
     }
 
     private Field findTenantField(Class<?> clazz) {
-        return TENANT_FIELD_CACHE.computeIfAbsent(clazz, c -> {
-            Class<?> current = c;
-            while (current != null && current != Object.class) {
-                try {
-                    return current.getDeclaredField(TENANT_KEY);
-                } catch (NoSuchFieldException ignored) {
-                    current = current.getSuperclass();
-                }
+        Field cached = TENANT_FIELD_CACHE.get(clazz);
+        if (cached != null) {
+            return cached == NO_TENANT_FIELD ? null : cached;
+        }
+
+        Class<?> current = clazz;
+        Field found = null;
+        while (current != null && current != Object.class) {
+            try {
+                found = current.getDeclaredField(TENANT_KEY);
+                break;
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
             }
-            return null;
-        });
+        }
+        TENANT_FIELD_CACHE.put(clazz, found != null ? found : NO_TENANT_FIELD);
+        return found;
     }
 }

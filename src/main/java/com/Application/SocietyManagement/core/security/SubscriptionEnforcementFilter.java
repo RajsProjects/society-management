@@ -10,7 +10,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,10 +22,13 @@ import java.util.List;
 import java.util.Set;
 
 @Component
-@RequiredArgsConstructor
 public class SubscriptionEnforcementFilter extends OncePerRequestFilter {
 
     private final SocietyRepository societyRepository;
+
+    public SubscriptionEnforcementFilter(SocietyRepository societyRepository) {
+        this.societyRepository = societyRepository;
+    }
 
     @Value("${subscription.enforcement.enabled:false}")
     private boolean enforcementEnabled;
