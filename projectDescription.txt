@@ -1,0 +1,747 @@
+====================================================================================================
+                        CIVICLINK / SAMAAJ - RESIDENTIAL SOCIETY MANAGEMENT SYSTEM
+                                COMPLETE SYSTEM SPECIFICATION & ARCHITECTURE
+====================================================================================================
+Version: 2.5.0-ENTERPRISE
+Target Platform: Java 21 LTS (Virtual Threads) | Spring Boot 3.5.14 | Spring Security 6 | MongoDB | Redis
+Design System: Samaaj Luxury Palette (Cream #FDFBF7, Obsidian Black #1A1A1A, Warm Terracotta #7A4B29)
+Last Updated: October 2026
+
+----------------------------------------------------------------------------------------------------
+TABLE OF CONTENTS
+----------------------------------------------------------------------------------------------------
+1. SYSTEM OVERVIEW & ARCHITECTURAL FOUNDATION
+2. TECHNOLOGY STACK & INFRASTRUCTURE TOPOLOGY
+3. ENTERPRISE MULTI-TENANCY & ZERO-KNOWLEDGE DATA ISOLATION ENGINE
+4. SECURITY, CRYPTOGRAPHY & DUAL-SCOPE ACCESS CONTROL
+5. COMPLETE SERVICE-BY-SERVICE BREAKDOWN (WHAT EACH SERVICE DOES & HOW)
+   5.1  AuthService
+   5.2  UserService
+   5.3  InviteService
+   5.4  CustomUserDetailsService
+   5.5  JwtService
+   5.6  SocietyService
+   5.7  PlatformController (Platform Governance Service)
+   5.8  FlatService
+   5.9  MaintenanceBillService
+   5.10 SubscriptionService
+   5.11 WebhookService
+   5.12 SubscriptionExpiryScheduler
+   5.13 ComplaintService
+   5.14 IssueService
+   5.15 AnnouncementService
+   5.16 EmailService
+   5.17 DashboardController (Analytics Aggregator)
+   5.18 DistributedLockService
+   5.19 S3Service
+   5.20 JoinCodeGenerator & MongoIndexInitializer
+6. FILTERS & PIPELINE MIDDLEWARE
+   6.1  JwtAuthenticationFilter
+   6.2  RateLimitingFilter
+   6.3  SubscriptionEnforcementFilter
+   6.4  RequestLoggingFilter
+7. DATABASE COLLECTIONS, COMPOUND INDEXES & DATA SCHEMAS
+8. ASYNC EVENT BUS & SCHEDULED BACKGROUND TASKS
+9. FRONTEND ARCHITECTURE & PRIVACY SHIELD
+10. PERFORMANCE OPTIMIZATIONS, CONCURRENCY & OBSERVABILITY
+
+====================================================================================================
+1. SYSTEM OVERVIEW & ARCHITECTURAL FOUNDATION
+====================================================================================================
+CivicLink (branded as "Samaaj" on the client interface) is an enterprise-grade, multi-tenant 
+Software-as-a-Service (SaaS) platform engineered for residential housing societies, gated 
+communities, and Resident Welfare Associations (RWAs).
+
+The platform addresses core operational hurdles in community management:
+  - Transparent Maintenance Billing & Bank Reconciliation (UPI anti-fraud duplicate checks)
+  - Democratic Resident Voting & Capital Improvement Proposal Tracking
+  - Real-time Issue & Complaint Ticketing with SLA Workflows
+  - Secure Resident Onboarding via Verification & Tokenized Invitations
+  - Broadcast Emergency Alerts & Targeted Community Announcements
+  - Automated SaaS Subscription Billing via Razorpay Webhooks
+  - Complete Tenant Isolation with zero-knowledge data protection between neighboring societies
+
+Architectural Philosophy:
+  - Shared Database, Shared Collection Multi-Tenancy with Discriminator Pattern (`societyId`).
+  - Transparent Data Filtering: Repositories and queries are intercepted at the persistence 
+    engine layer (`MultiTenantMongoTemplate`), ensuring application code cannot accidentally leak 
+    data across tenants.
+  - Dual-Scope Platform Isolation: Complete architectural decoupling between Global Platform 
+    Administrators and Domestic Society Tenants.
+  - High Concurrency: Built on Java 21 Virtual Threads (`Loom`), enabling non-blocking execution 
+    of thousands of parallel I/O requests (database reads, emails, AWS S3 uploads, Redis calls).
+
+====================================================================================================
+2. TECHNOLOGY STACK & INFRASTRUCTURE TOPOLOGY
+====================================================================================================
+Backend Core:
+  - Language: Java 21 LTS
+  - Framework: Spring Boot 3.5.14
+  - Concurrency: Project Loom Virtual Threads (`spring.threads.virtual.enabled: true`)
+  - Security: Spring Security 6.x (Stateless Bearer JWT, Method Security `@PreAuthorize`)
+  - Persistence: Spring Data MongoDB 5.5
+  - Cache & Concurrency: Redis 7.x with Lettuce Client Connection Pool (commons-pool2)
+  - JWT Engine: JJWT (io.jsonwebtoken) 0.12.6 with pre-cached HMAC-SHA256 SecretKey and JwtParser
+  - Utilities: Lombok 1.18.46, Jackson 2.18, Apache Commons Lang3
+
+Cloud & External Integrations:
+  - Storage: AWS SDK v2 for Java (S3 Client & S3 Presigner for society documents and photos)
+  - Mail Service: Spring Mail JavaMailSender / AWS SES with Thymeleaf HTML Template Engine
+  - Payments: Razorpay Java SDK 1.4.3 (Order creation, signature verification, webhook validation)
+
+Observability & Telemetry:
+  - Metrics: Spring Boot Actuator with Micrometer Prometheus registry (`/actuator/prometheus`)
+  - Visualization: Grafana dashboards with Prometheus scraper
+  - Load Testing: k6 performance suite (Spike, Stress, Auth, Billing, Complaints, Issues)
+  - Containerization: Multi-stage Dockerfile, Docker Compose, Kubernetes manifests (Deployment, HPA, ConfigMap)
+
+Frontend Interface:
+  - Architecture: Lightweight Single-Page Application (SPA) in Vanilla ES6+ JavaScript and Semantic HTML5
+  - Styling: Pure Vanilla CSS Design System with CSS Custom Properties (Samaaj Luxury Palette)
+  - Cryptographic Badges: Role pills (Platform Admin, Super Admin, Admin, Resident, Security)
+  - Real-time Mode: REST API client with polling/event hooks and tenant privacy shield
+
+====================================================================================================
+3. ENTERPRISE MULTI-TENANCY & ZERO-KNOWLEDGE DATA ISOLATION ENGINE
+====================================================================================================
+Every society registered on CivicLink represents an independent tenant. All domestic records 
+(users, flats, bills, complaints, issues, announcements, votes, subscriptions) are partitioned 
+by a mandatory `societyId`.
+
+Key Components:
+
+A. TenantContext:
+   - Holds the current request's `societyId` in a thread-safe `ThreadLocal<String>`.
+   - Populated early in the request lifecycle by `JwtAuthenticationFilter` after decoding the JWT.
+   - Cleared unconditionally in a `finally` block before the thread returns to the thread pool:
+     `TenantContext.clear();`
+   - Provides functional execution wrappers: `TenantContext.runAsTenant(societyId, runnable)` and
+     `TenantContext.callAsTenant(societyId, callable)` for scheduled tasks and system workers.
+
+B. MultiTenantMongoTemplate:
+   - Custom implementation extending Spring Data's `MongoTemplate`.
+   - Intercepts all database operations:
+     * Reads: `find`, `findById`, `findOne`, `findAndModify`, `findAndRemove`, `count`, `exists`
+     * Writes/Mutations: `save`, `insert`, `insertAll`, `remove`, `updateFirst`, `updateMulti`
+     * Analytics: `aggregate`, `aggregate(TypedAggregation)`
+   - How it works:
+     1. Checks if the target collection is tenant-scoped. (The `societies` collection is exempt).
+     2. Checks if the caller has `ROLE_PLATFORM_ADMIN`. (Platform admins manage societies globally).
+     3. For normal requests, retrieves `TenantContext.getSocietyId()`.
+     4. On Queries: Inspects the incoming `Query` object. If `societyId` is already present, verifies
+        it matches the authenticated tenant; if it mismatches or uses prohibited operators, throws 
+        `AccessDeniedException` immediately. If omitted, automatically appends:
+        `Criteria.where("societyId").is(tenantId)`.
+     5. On Writes: Inspects the entity via reflection. If `societyId` is null, automatically stamps
+        the active tenant ID. If the entity already has a different `societyId`, throws 
+        `AccessDeniedException` to prevent cross-tenant object overwrites.
+     6. Field Reflection Cache: Utilizes a static `ConcurrentHashMap<Class<?>, Field>` with a 
+        `NO_TENANT_FIELD` sentinel for O(1) reflection resolution without repeated reflection overhead.
+     7. Aggregation Pipeline Rewriting: Automatically injects a `$match: { societyId: tenantId }` 
+        stage at the front of the pipeline and verifies any `$lookup` sub-pipelines.
+
+====================================================================================================
+4. SECURITY, CRYPTOGRAPHY & DUAL-SCOPE ACCESS CONTROL
+====================================================================================================
+A. Double-Hashed Password Storage (BCrypt + Secret Pepper):
+   - Handled by `PepperedPasswordEncoder`.
+   - Formula: `BCrypt.hash(rawPassword + serverPepper, strength = 10)`.
+   - Even if the database is compromised, passwords cannot be cracked with rainbow tables without 
+     the high-entropy server-side pepper secret stored outside the database.
+
+B. Dual-Scope Isolation Architecture:
+   - Platform Scope:
+     * Role: `ROLE_PLATFORM_ADMIN`
+     * Scope: Global system infrastructure, society registration approvals, JVM health, broadcasts.
+     * Restriction: Zero domestic tenant access. Platform admins cannot view or manipulate 
+       neighboring societies' private ledgers, resident complaints, or chat messages.
+   - Domestic Society Scope:
+     * Roles: `SUPER_ADMIN` > `ADMIN` > `RESIDENT` (organized via Spring Security `RoleHierarchyImpl`).
+     * `SUPER_ADMIN`: Society creator / President. Full administrative authority over their society.
+     * `ADMIN`: Committee member / Manager. Can manage residents, flats, complaints, bills, notices.
+     * `RESIDENT`: Apartment owner or tenant. Can view own bills, submit complaints, vote on issues.
+
+C. High-Performance Stateless JWT Engine:
+   - Secret key and `JwtParser` pre-initialized in `@PostConstruct` in `JwtService`.
+   - Single-Pass Extraction: Token claims are parsed and cryptographically validated exactly ONCE per 
+     request in `JwtAuthenticationFilter` via `jwtService.parseAndValidateClaims(token)`.
+   - Token payload claims: `sub` (email), `userId`, `role`, `platformRole`, `status`, `societyId`, `exp`.
+
+====================================================================================================
+5. COMPLETE SERVICE-BY-SERVICE BREAKDOWN (WHAT EACH SERVICE DOES & HOW)
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+5.1 AuthService (`com.Application.SocietyManagement.users.service.AuthService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Manages public user onboarding (resident registration) and authentication (login).
+- HOW IT WORKS:
+  1. Signup (`signup(SignupRequest request)`):
+     - Validates email uniqueness across all users (`userRepository.findByEmail`).
+     - Resolves society identity: The resident must supply a valid `joinCode` (e.g. `SOC-KD8X72`).
+     - Looks up society by join code. Verifies society exists and status is `ACTIVE`.
+     - Hashes password using `PepperedPasswordEncoder`.
+     - Constructs `User` entity with `role = RESIDENT` and `status = PENDING`.
+     - Saves user in MongoDB. The account remains in `PENDING` status until a society admin approves it.
+  2. Login (`login(LoginRequest request)`):
+     - Fetches user by email. Throws HTTP 401 if not found.
+     - Compares submitted password against stored BCrypt hash using `passwordEncoder.matches`.
+     - Enforces status verification:
+       * `PENDING` -> Throws HTTP 403 ("Account pending admin approval").
+       * `INACTIVE` -> Throws HTTP 403 ("Account is inactive").
+       * `BLOCKED` -> Throws HTTP 403 ("Account has been blocked").
+     - If `ACTIVE`, generates JWT token signed with HMAC-SHA256 containing user metadata.
+     - Returns `AuthResponse` containing Bearer token, roles, user name, and societyId.
+
+----------------------------------------------------------------------------------------------------
+5.2 UserService (`com.Application.SocietyManagement.users.service.UserService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Handles resident account lifecycle management, status approvals/rejections, member directory 
+  queries, and password changes.
+- HOW IT WORKS:
+  1. Status Update (`updateStatus(String userId, Status status)`):
+     - Enforces active tenant context (`TenantContext.getSocietyId()`).
+     - Fetches target user within the tenant (`findByIdAndSocietyId`).
+     - Privilege Protection Rule: Prevents modifying accounts with role `ADMIN` or `SUPER_ADMIN`.
+       An admin cannot demote or block another admin through this endpoint.
+     - Updates status (`ACTIVE`, `INACTIVE`, `BLOCKED`) and saves.
+  2. Paginated User Listing (`getUsers(...)`):
+     - Supports multi-attribute filtering by `status` and `role`.
+     - Sorts by creation timestamp descending (`createdAt DESC`).
+     - Maps results to token-efficient `UserSummarydto` records.
+  3. Profile Retrieval (`getCurrentUser`, `getUserByEmail`):
+     - Returns authenticated user details and permissions.
+  4. Password Change (`changePassword(...)`):
+     - Verifies `currentPassword` against current user hash using BCrypt pepper.
+     - Hashes `newPassword` and saves updated user.
+
+----------------------------------------------------------------------------------------------------
+5.3 InviteService (`com.Application.SocietyManagement.users.service.InviteService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Enables society administrators to invite residents and staff via secure, time-limited invitation 
+  tokens delivered through asynchronous email.
+- HOW IT WORKS:
+  1. Sending Invitation (`invite(...)`):
+     - Validates tenant context and caller role.
+     - Privilege Escalation Guard:
+       * An `ADMIN` cannot invite an `ADMIN` or `SUPER_ADMIN`.
+       * A `SUPER_ADMIN` cannot invite another `SUPER_ADMIN`.
+     - Checks that the recipient email is not already registered as a user.
+     - Checks that no unused pending invite already exists for that email in the society.
+     - Generates a cryptographically random UUID token.
+     - Saves an `InviteToken` document with `expiresAt = Instant.now() + 48 Hours` and `used = false`.
+     - Asynchronously calls `EmailService.sendInviteEmail` with the invitation link.
+  2. Accepting Invitation (`acceptInvite(AcceptInviteRequest request)`):
+     - Looks up token in MongoDB. Throws HTTP 404 if invalid.
+     - Verifies token is not already used (`invite.isUsed() == false`) and not expired.
+     - Confirms email is still available.
+     - Creates `User` entity directly with `status = ACTIVE` (since the invitation was pre-authorized 
+       by an administrator), assigning the invited role and flatId.
+     - Marks `InviteToken.used = true` and saves.
+     - Generates an immediate JWT session token for seamless login.
+  3. Scheduled Token Cleanup (`cleanupExpiredTokens()`):
+     - Runs every hour (`@Scheduled(cron = "0 0 * * * *")`).
+     - Executes bulk deletion: `inviteTokenRepository.deleteByExpiresAtBefore(Instant.now())`.
+
+----------------------------------------------------------------------------------------------------
+5.4 CustomUserDetailsService (`com.Application.SocietyManagement.users.service.CustomUserDetailsService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Implements Spring Security's `UserDetailsService` contract to load user principals during JWT 
+  authentication filtering.
+- HOW IT WORKS:
+  - High-Speed In-Memory Cache: Houses a `ConcurrentHashMap<String, CachedUser>` with a 60-second TTL.
+  - On `loadUserByUsername(email)`:
+    * Checks if the user is present in memory and not expired. If so, returns cached `UserDetails` in O(1) 
+      without database round-trips.
+    * If miss or expired, queries `userRepository.findByEmail(email)`.
+    * Caches user details for 60 seconds.
+  - Provides `evictUser(email)` for cache invalidation upon credential changes.
+
+----------------------------------------------------------------------------------------------------
+5.5 JwtService (`com.Application.SocietyManagement.users.service.JwtService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Generates, cryptographically verifies, and extracts claims from HMAC-SHA256 JWT tokens.
+- HOW IT WORKS:
+  - Startup Initialization (`@PostConstruct`): Validates secret length (minimum 256 bits) and compiles 
+    the thread-safe `SecretKey` and `JwtParser` instance once.
+  - Token Generation (`generateToken(User user)`):
+    * Encodes subject (email), `userId`, `role`, `platformRole`, `status`, and `societyId`.
+    * Sets issue time and expiration (configured via `jwt.expiration`, default 24 hours).
+    * Signs with HMAC-SHA256.
+  - Single-Pass Validation (`parseAndValidateClaims(String token)`):
+    * Executes a single cryptographic parse using the pre-built parser.
+    * Returns the `Claims` payload or `null` if expired/tampered, eliminating duplicate verification passes.
+
+----------------------------------------------------------------------------------------------------
+5.6 SocietyService (`com.Application.SocietyManagement.society.service.SocietyService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Oversees society registration, document uploads to AWS S3, platform approval workflows, join code 
+  generation, and tenant profile retrieval.
+- HOW IT WORKS:
+  1. Society Registration (`register(...)`):
+     - Public endpoint. Verifies uniqueness of registration number and administrator email.
+     - File Upload: If registration certificate/document is uploaded, validates file size (<= 5MB) 
+       and MIME type (PDF, JPEG, PNG). Streams bytes to S3 bucket in folder `society-documents/` 
+       via `S3Service.uploadFile`.
+     - Generates a permanent unique alphanumeric join code via `JoinCodeGenerator` (e.g. `SOC-8F9K2L`).
+     - Creates `Society` entity with `status = PENDING_VERIFICATION` and plan `TRIAL`.
+     - Creates the initial `SUPER_ADMIN` user in `PENDING` status.
+     - Links `superAdminId` to the society and persists both records.
+  2. Platform Verification (`verify(...)`):
+     - Restricted to `ROLE_PLATFORM_ADMIN`.
+     - If rejected: Sets `status = REJECTED` and records mandatory `rejectionReason`.
+     - If approved: Sets `status = ACTIVE`, records `verifiedAt` and `verifiedBy`, initializes 14-day 
+       trial window (`trialEndsAt = now + 14 days`), and immediately transitions the society's 
+       `SUPER_ADMIN` user account to `ACTIVE` so they can log in.
+  3. Public Join Lookup (`getByJoinCode(joinCode)`):
+     - Resolves society public profile for registration links. Confirms society is active.
+  4. Profile Caching (`getMySociety()`):
+     - Caches society metadata in an in-memory concurrent map with a 30-second TTL to reduce 
+       repetitive reads on tenant dashboards.
+  5. S3 Presigned URL (`getDocumentUrl(societyId)`):
+     - Generates a secure, time-expiring AWS S3 presigned GET URL for reviewing registration certificates.
+
+----------------------------------------------------------------------------------------------------
+5.7 PlatformController (`com.Application.SocietyManagement.society.controller.PlatformController`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Platform governance micro-module strictly restricted to `ROLE_PLATFORM_ADMIN`.
+- HOW IT WORKS:
+  1. Platform Telemetry (`/overview`):
+     - Queries platform-wide counts: total societies, active societies, pending verification societies, 
+       and total user accounts across all tenants.
+     - Reads JVM runtime telemetry: total allocated memory, free memory, used memory in MB, and 
+       system uptime via `ManagementFactory.getRuntimeMXBean()`.
+     - Emits zero-knowledge isolation status `ENFORCED_ZERO_KNOWLEDGE`.
+  2. Global System Broadcast (`/broadcast`):
+     - Emits maintenance or system announcements to all tenant instances.
+
+----------------------------------------------------------------------------------------------------
+5.8 FlatService (`com.Application.SocietyManagement.flat.service.FlatService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Manages physical apartment inventory, blocks, floor distributions, square footage, and occupancy.
+- HOW IT WORKS:
+  1. Creation & Update (`create`, `update`):
+     - Verifies flat number uniqueness within the active society (`existsByFlatNumberAndSocietyId`).
+     - Stores block, floor, flat number, owner contact info (name, email, phone), flat type (1BHK, 2BHK, 
+       3BHK, 4BHK, PENTHOUSE, VILLA), and occupied status.
+  2. Privacy-Aware Listing (`getAll`, `getById`):
+     - Dynamic PII Redaction: When flats are queried, evaluates the caller's privileges via `isPrivileged(...)`.
+     - If the user is an `ADMIN`, `SUPER_ADMIN`, `PLATFORM_ADMIN`, or the owner/resident of that flat, 
+       full contact details are provided.
+     - If the user is a neighboring resident, owner contact details (`ownerName`, `ownerEmail`, 
+       `ownerPhone`) are masked/redacted to safeguard personal privacy.
+  3. Paginated Multi-Filter Queries:
+     - Allows filtering by `block` and `occupied` status with compound index backing.
+
+----------------------------------------------------------------------------------------------------
+5.9 MaintenanceBillService (`com.Application.SocietyManagement.finance.service.MaintenanceBillService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Automates society maintenance billing, resident payments, financial reconciliation, and overdue 
+  enforcement.
+- HOW IT WORKS:
+  1. Bill Generation (`createBill(CreateBillRequest request)`):
+     - Restricted to `ADMIN` / `SUPER_ADMIN`.
+     - Validates that the target user belongs to the current society and matches the flat ID.
+     - Uniqueness Check: Ensures no duplicate bill exists for the same apartment in the same billing 
+       month (`existsByApartmentNumberAndBillingMonthAndSocietyId`).
+     - Persists `MaintenanceBill` with status `PENDING`.
+     - Event Publishing: Publishes `BillGeneratedEvent` via Spring's `ApplicationEventPublisher`. 
+       `EmailService` listens asynchronously and dispatches the HTML invoice email without blocking 
+       the HTTP response.
+  2. Role-Based Bill Queries (`getBills(...)`):
+     - Admins can view all bills across the society, filterable by status (`PENDING`, `PAID`, `OVERDUE`).
+     - Residents can only see bills assigned to their own `userId`.
+  3. Payment Submission with Anti-Fraud Checks (`payBill(...)`):
+     - Validates resident ownership of the bill.
+     - Rejects if bill is already `PAID` or `PENDING_VERIFICATION`.
+     - Validates full payment (partial amounts rejected).
+     - UPI Transaction Regex Validation: Validates format against alphanumeric pattern (`^[A-Za-z0-9_-]{10,50}$`).
+     - Anti-Fraud Cross-Bill Uniqueness: Checks `billRepository.existsByUpiTransactionId(txnId)` across 
+       all bills to prevent recycling the same bank transaction reference for multiple payments.
+     - Concurrency Control: Acquires a Redis distributed lock (`bill:pay:{billId}`) for 15 seconds to 
+       prevent double-submission race conditions.
+     - Transitions status to `PENDING_VERIFICATION` and stores `upiTransactionId`.
+  4. Payment Reconciliation (`verifyPayment`, `rejectPayment`):
+     - Admin/Accountant reviews bank account statement.
+     - On Verify: Sets status to `PAID`, stamps `paidAt = Instant.now()`, and publishes `PaymentSuccessEvent` 
+       which asynchronously triggers payment receipt email dispatch.
+     - On Reject: Clears `upiTransactionId` and reverts status to `PENDING` (or `OVERDUE` if past due date).
+  5. Daily Overdue Automation (`markOverdueBills()`):
+     - Scheduled daily at midnight UTC (`@Scheduled(cron = "0 0 0 * * *", zone = "UTC")`).
+     - Acquires Redis distributed lock `dist_lock:markOverdueBills` to ensure only ONE node in a clustered 
+       deployment executes the batch.
+     - Executes an atomic MongoDB `updateMulti`:
+       Target: `{ status: 'PENDING', dueDate: { $lt: today } }`
+       Update: `{ $set: { status: 'OVERDUE', updatedAt: now } }`.
+
+----------------------------------------------------------------------------------------------------
+5.10 SubscriptionService (`com.Application.SocietyManagement.subscription.service.SubscriptionService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Manages society SaaS subscription plans (`BASIC`, `GROWTH`, `SCALE`), Razorpay payment orders, and 
+  automated plan activation.
+- HOW IT WORKS:
+  1. Order Creation (`createOrder(SubscriptionPlan plan)`):
+     - Looks up plan price from `PlanPricingConfig` (e.g. Basic: ₹999/mo, Growth: ₹2,499/mo, Scale: ₹4,999/mo).
+     - Communicates with Razorpay API using `RazorpayClient` to create an order in INR currency.
+     - (In test/mock mode with dummy credentials, generates mock order IDs).
+     - Persists a `Subscription` record with `paymentStatus = PENDING`.
+     - Returns `OrderResponse` with `razorpayOrderId`, amount, and client `keyId`.
+  2. Client-Side Payment Verification (`verifyPayment(...)`):
+     - Validates HMAC-SHA256 signature using `Utils.verifyPaymentSignature(...)` with Razorpay key secret.
+     - If signature matches, invokes `activateSubscription(...)`.
+  3. Idempotent Activation (`activateSubscription(...)`):
+     - Shared by client verification endpoint and asynchronous webhooks.
+     - If `subscription.paymentStatus == SUCCESS`, no-ops immediately to prevent race conditions.
+     - Marks subscription `SUCCESS`, sets `startDate = now` and `endDate = now + 30 days`.
+     - Updates `Society` entity: `plan = subscription.plan`, `subscriptionStatus = ACTIVE`, 
+       `subscriptionEndsAt = endDate`.
+  4. Plan Changes (`changePlan(...)`):
+     - Validates society is active and not already on the requested plan. Reuses order creation pipeline.
+
+----------------------------------------------------------------------------------------------------
+5.11 WebhookService (`com.Application.SocietyManagement.subscription.service.WebhookService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Processes server-to-server webhook events from Razorpay for robust, asynchronous payment settlement.
+- HOW IT WORKS:
+  1. Cryptographic Webhook Validation:
+     - Intercepts raw JSON payload and `X-Razorpay-Signature` header.
+     - Calls `Utils.verifyWebhookSignature(payload, signature, webhookSecret)`. Rejects invalid signatures.
+  2. Event Routing:
+     - `payment.captured`: Extracts `order_id` and `payment_id`. Calls `subscriptionService.activateSubscription` 
+       idempotently.
+     - `payment.failed`: Records failure reason and marks `subscription.paymentStatus = FAILED`.
+
+----------------------------------------------------------------------------------------------------
+5.12 SubscriptionExpiryScheduler (`com.Application.SocietyManagement.subscription.schedular.SubscriptionExpiryScheduler`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Automated background daemon monitoring trial periods and active subscription expirations.
+- HOW IT WORKS:
+  - Runs daily at 2:00 AM (`@Scheduled(cron = "0 0 2 * * *")`).
+  - Lapsed Trials: Finds societies with `subscriptionStatus = TRIAL` and `trialEndsAt < now`. 
+    Transitions status to `EXPIRED`.
+  - Lapsed Subscriptions: Finds societies with `subscriptionStatus = ACTIVE` and `subscriptionEndsAt < now`. 
+    Transitions status to `PAST_DUE`.
+  - Combined with `SubscriptionEnforcementFilter`, automatically locks out mutation operations 
+    until renewal while keeping data readable.
+
+----------------------------------------------------------------------------------------------------
+5.13 ComplaintService (`com.Application.SocietyManagement.complaint.service.ComplaintService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Provides end-to-end ticketing for resident maintenance requests, security concerns, noise 
+  disturbances, and infrastructure faults.
+- HOW IT WORKS:
+  1. Ticket Creation (`create(...)`):
+     - Resident submits title, description, and category (`MAINTENANCE`, `SECURITY`, `NOISE`, 
+       `CLEANLINESS`, `PARKING`, `OTHER`).
+     - Automatically attaches resident's name, apartment number, residentId, and societyId.
+     - Sets initial status to `OPEN`.
+  2. Filtered Queries (`getComplaints(...)`):
+     - Administrators see all society complaints with filtering by `status` and `category`.
+     - Residents see only their own logged tickets.
+     - Backed by MongoDB compound indexes (`{'societyId': 1, 'status': 1, 'category': 1, 'createdAt': -1}`).
+  3. Status Progression (`updateStatus(...)`):
+     - Admin can transition ticket: `OPEN` -> `IN_PROGRESS` -> `RESOLVED` / `CLOSED`.
+     - Admin can append remarks (`adminNote`). When marked `RESOLVED`, stamps `resolvedBy` with admin's name.
+  4. Deletion (`delete(...)`):
+     - Residents can delete their ticket only while it remains in `OPEN` status.
+
+----------------------------------------------------------------------------------------------------
+5.14 IssueService (`com.Application.SocietyManagement.issue.service.IssueService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Powers community democracy, collective decision making, and capital expenditure proposals 
+  (e.g., rooftop solar installations, EV charging bays, CCTV upgrades).
+- HOW IT WORKS:
+  1. Issue Submission (`createIssue(...)`):
+     - Residents or admins post a proposal with title, description, optional photo URL, and priority.
+     - Stored with `status = OPEN`.
+  2. Anti-Duplicate Democratic Voting (`addVote`, `removeVote`):
+     - Rule: A user cannot vote on their own proposal (`creatorId != userId`).
+     - Rule: A user can only vote once per issue. Enforced by unique compound index on `IssueVote`:
+       `{'issueId': 1, 'userId': 1}` with uniqueness constraint.
+     - Throws HTTP 409 if already voted.
+     - `removeVote` allows withdrawing a vote, deleting the `IssueVote` document.
+  3. High-Performance Bulk Vote Tallying (Eliminating N+1 Queries):
+     - When listing issues, avoids querying vote counts one-by-one.
+     - Executes a single aggregated MongoDB query: `issueVoteRepository.countVotesByIssueIds(issueIds)` 
+       using `$match: { issueId: { $in: ... } }` and `$group: { _id: "$issueId", count: { $sum: 1 } }`.
+     - Assembles responses in O(N) memory, with an automated fallback if aggregation encounters errors.
+  4. Sorting:
+     - Supports dynamic sorting by `createdAt` or by democratic popularity (`voteCount DESC`).
+
+----------------------------------------------------------------------------------------------------
+5.15 AnnouncementService (`com.Application.SocietyManagement.communication.service.AnnouncementService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Broadcast noticeboard for society management to communicate critical notices and alerts.
+- HOW IT WORKS:
+  - Categories: `GENERAL`, `MAINTENANCE`, `EMERGENCY`.
+  - Admin-Only Authorship: Only `ADMIN` or `SUPER_ADMIN` can create, edit, or delete notices.
+  - Multi-Tenant Isolation: Scoped automatically by `TenantContext.getSocietyId()`.
+  - Paginated Listing: Delivered newest-first (`createdAt DESC`), filterable by notice type.
+
+----------------------------------------------------------------------------------------------------
+5.16 EmailService (`com.Application.SocietyManagement.communication.email.service.EmailService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Event-driven asynchronous email notification system for invitations, invoices, payment receipts, 
+  and automated payment reminders.
+- HOW IT WORKS:
+  1. Event Bus Integration:
+     - `@Async @EventListener handleBillGenerated(BillGeneratedEvent event)`: Listens for newly created 
+       bills and renders `email/bill-generated.html` template.
+     - `@Async @EventListener handlePaymentSuccess(PaymentSuccessEvent event)`: Listens for approved 
+       payments and renders `email/payment-success.html` receipt.
+  2. Scheduled Reminders:
+     - 3-Day Due Date Reminder: Runs daily at 9:00 AM UTC (`@Scheduled(cron = "0 0 9 * * *", zone = "UTC")`). 
+       Finds `PENDING` bills where `dueDate == today + 3 days` and notifies residents.
+     - Overdue Notification: Runs daily at 9:00 AM UTC. Finds `OVERDUE` bills and delivers urgent alerts.
+  3. Clustered Concurrency: Uses `DistributedLockService.tryLock(...)` for 15 minutes to guarantee only 
+     one server instance in a multi-pod Kubernetes cluster sends out reminder batches.
+  4. Thymeleaf HTML Rendering: Populates dynamic variables (resident name, amount, month, invoice links).
+  5. Resilient Mock Delivery: In local/dev environments without SMTP credentials, logs the message 
+     safely without crashing.
+
+----------------------------------------------------------------------------------------------------
+5.17 DashboardController (`com.Application.SocietyManagement.dashboard.controller.DashboardController`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Aggregates management dashboard analytics across all modules in real time.
+- HOW IT WORKS:
+  - Parallel Virtual Thread Fan-Out:
+    Fires 12 concurrent `CompletableFuture` queries simultaneously via `taskExecutor` (Virtual Threads):
+      1. `totalResidents`
+      2. `pendingApprovals`
+      3. `totalFlats`
+      4. `occupiedFlats`
+      5. `openComplaints`
+      6. `inProgressComplaints`
+      7. `resolvedComplaints`
+      8. `totalBills`
+      9. `paidBills`
+      10. `overdueBills`
+      11. `openIssues`
+      12. `resolvedIssues`
+  - Joins all queries concurrently using `CompletableFuture.allOf(...)`. Total latency equals the duration 
+    of the single slowest query, rather than the sum of 12 sequential queries.
+  - 10-Second Concurrent In-Memory Cache: Stores `CachedDashboardStats` per `societyId` to protect MongoDB 
+    from dashboard refresh spam.
+
+----------------------------------------------------------------------------------------------------
+5.18 DistributedLockService (`com.Application.SocietyManagement.core.util.DistributedLockService`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  Provides distributed mutex locks using Redis to coordinate scheduled tasks across clustered backend instances.
+- HOW IT WORKS:
+  - Calls `redisTemplate.opsForValue().setIfAbsent("dist_lock:" + lockName, "locked", duration)`.
+  - Returns `true` if lock was acquired, `false` if another instance is already processing.
+  - Safe Fallback: If Redis is temporarily unreachable or disabled, allows execution with a warning.
+
+----------------------------------------------------------------------------------------------------
+5.19 S3Service (`com.Application.SocietyManagement.core.service.S3Service`)
+----------------------------------------------------------------------------------------------------
+- WHAT IT DOES:
+  AWS S3 integration for storing and securely serving society verification documents and issue photos.
+- HOW IT WORKS:
+  - Upload: Streams file bytes to AWS S3 using `S3Client.putObject` with unique UUID keys.
+  - Presigned URLs: Uses `S3Presigner` to generate cryptographically signed, temporary GET URLs with 
+    configurable expiry (`aws.s3.presigned-url-expiry`), keeping the S3 bucket private.
+  - Deletion: Deletes objects via `S3Client.deleteObject`.
+
+----------------------------------------------------------------------------------------------------
+5.20 JoinCodeGenerator & MongoIndexInitializer
+----------------------------------------------------------------------------------------------------
+- JoinCodeGenerator:
+  Generates clean, human-readable society join codes (e.g. `SOC-8F9K2L`) avoiding ambiguous characters 
+  (0, O, 1, I).
+- MongoIndexInitializer:
+  Spring `ApplicationRunner` that scans all `@Document` classes at application boot and ensures all 
+  compound and unique indexes are created in MongoDB, guaranteeing optimal database performance even 
+  when `spring.data.mongodb.auto-index-creation` is disabled in production.
+
+====================================================================================================
+6. FILTERS & PIPELINE MIDDLEWARE
+====================================================================================================
+The HTTP request pipeline executes through the following filters in order:
+
+1. RequestLoggingFilter:
+   - Assigns a unique trace ID (`X-Trace-Id`) to every request.
+   - Logs method, URI, client IP, and execution time in milliseconds.
+
+2. RateLimitingFilter (Positioned before UsernamePasswordAuthenticationFilter):
+   - Sliding-window rate limiter powered by Redis.
+   - Intercepts sensitive routes: `/api/v1/auth/*`, `/api/v1/societies/register`, `/api/v1/societies/join/*`, 
+     `/api/v1/users/change-password`, `/api/v1/communication/email/test`, `/api/v1/subscriptions/create-order`.
+   - Rate limit: Configurable (default 120 requests per minute per IP).
+   - Atomic increment via `redisTemplate.opsForValue().increment(key)`. Sets Redis TTL on first request (`count == 1`).
+   - Returns HTTP 429 ("Too many requests") if limit is exceeded.
+   - Uses `request.getRemoteAddr()` aligned with Spring's forward-headers strategy to prevent header spoofing.
+
+3. JwtAuthenticationFilter:
+   - Reads `Authorization: Bearer <token>` header.
+   - Performs single-pass cryptographic parse using pre-compiled parser in `JwtService`.
+   - Loads user details via cached `CustomUserDetailsService`.
+   - Checks account status: rejects if `PENDING`, `INACTIVE`, or `BLOCKED` with HTTP 403.
+   - Injects `UsernamePasswordAuthenticationToken` into Spring Security's `SecurityContextHolder`.
+   - Injects `societyId` into `TenantContext`.
+   - Guarantees `TenantContext.clear()` in a `finally` block after the downstream chain completes.
+
+4. SubscriptionEnforcementFilter (Positioned after JwtAuthenticationFilter):
+   - Checks HTTP method: skips GET/HEAD/OPTIONS (read operations remain accessible).
+   - Skips allowed renewal endpoints (`/api/v1/subscriptions/*`, `/api/v1/webhooks/*`, `/api/v1/auth/*`).
+   - Skips platform administrators (`ROLE_PLATFORM_ADMIN`).
+   - Evaluates society status:
+     * If society is inactive or suspended: Returns HTTP 403.
+     * If society subscription is `EXPIRED` or `PAST_DUE`: Returns HTTP 402 ("Payment Required") 
+       with notice that renewal is required to make mutations.
+
+====================================================================================================
+7. DATABASE COLLECTIONS, COMPOUND INDEXES & DATA SCHEMAS
+====================================================================================================
+MongoDB Database: `society_management`
+
+Collections & Indexes:
+1. `societies`:
+   - `registrationNumber` (Unique)
+   - `joinCode` (Unique)
+   - `societyCode` (Unique)
+   - `status`, `adminEmail`, `subscriptionStatus`
+
+2. `users`:
+   - `email` (Unique)
+   - `{'societyId': 1, 'status': 1}`
+   - `{'societyId': 1, 'role': 1}`
+   - `{'societyId': 1, 'status': 1, 'role': 1}`
+
+3. `flats`:
+   - `{'societyId': 1, 'flatNumber': 1}` (Unique)
+   - `{'societyId': 1, 'block': 1, 'flatNumber': 1}`
+   - `{'societyId': 1, 'occupied': 1}`
+   - `{'societyId': 1, 'block': 1, 'occupied': 1, 'flatNumber': 1}`
+
+4. `maintenance_bills`:
+   - `{'societyId': 1, 'apartmentNumber': 1, 'billingMonth': 1}` (Unique)
+   - `{'societyId': 1, 'userId': 1, 'status': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'status': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'createdAt': -1}`
+   - `{'status': 1, 'dueDate': 1}`
+   - `{'upiTransactionId': 1}` (Unique, Sparse)
+
+5. `complaints`:
+   - `{'societyId': 1, 'status': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'category': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'status': 1, 'category': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'residentId': 1, 'status': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'createdAt': -1}`
+
+6. `issues`:
+   - `{'societyId': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'status': 1, 'createdAt': -1}`
+
+7. `issue_votes`:
+   - `{'issueId': 1, 'userId': 1}` (Unique)
+
+8. `announcements`:
+   - `{'societyId': 1, 'createdAt': -1}`
+   - `{'societyId': 1, 'type': 1, 'createdAt': -1}`
+
+9. `subscriptions`:
+   - `{'societyId': 1, 'createdAt': -1}`
+   - `{'razorpayOrderId': 1, 'societyId': 1}`
+
+10. `invite_tokens`:
+    - `token` (Unique)
+    - `{'societyId': 1, 'email': 1, 'used': 1}`
+    - `expiresAt`
+
+====================================================================================================
+8. ASYNC EVENT BUS & SCHEDULED BACKGROUND TASKS
+====================================================================================================
+Spring Application Events (Decoupled & Asynchronous):
+  - `BillGeneratedEvent`: Triggered when an admin creates a bill. Caught by `EmailService` to dispatch 
+    the invoice asynchronously without stalling the API response.
+  - `PaymentSuccessEvent`: Triggered when a payment reference is verified. Caught by `EmailService` 
+    to dispatch the payment receipt asynchronously.
+
+Scheduled Jobs Summary:
+  - Hourly (:00): `InviteService.cleanupExpiredTokens()` -> Purges expired invitations.
+  - Midnight UTC (00:00): `MaintenanceBillService.markOverdueBills()` -> Marks past-due bills OVERDUE 
+    via distributed lock.
+  - Daily 2:00 AM: `SubscriptionExpiryScheduler.checkExpiries()` -> Audits expired trials & lapsed subscriptions.
+  - Daily 9:00 AM UTC: `EmailService.sendBillReminders()` -> Sends 3-day advance payment reminders.
+  - Daily 9:00 AM UTC: `EmailService.sendOverdueNotifications()` -> Sends overdue payment notifications.
+
+====================================================================================================
+9. FRONTEND ARCHITECTURE & PRIVACY SHIELD
+====================================================================================================
+The client application is built with a bespoke luxury aesthetic inspired by contemporary civic spaces:
+  - Color Tokens:
+    * Background / Cards: Pure Cream (`#FDFBF7`, `#F5EFEB`, `#EAE2D8`)
+    * Typography & Structure: Deep Obsidian (`#1A1A1A`, `#2D2D2D`)
+    * Primary Accents: Warm Terracotta Brown (`#7A4B29`, `#60381C`, `#9E633B`)
+    * Status Badges: Emerald Green (`#10B981`), Ruby Red (`#EF4444`), Amber (`#F59E0B`)
+
+Key Frontend Views:
+  1. Authentication & Onboarding View:
+     - Toggle between Resident Login, Resident Signup, and Administrator Access.
+     - Validation for society join code and password confirmation.
+  2. Workspace Dashboard:
+     - Real-time KPI counter cards (Total Residents, Occupancy %, Open Complaints, Overdue Bills).
+     - Quick Action modals (Report Complaint, Pay Maintenance, Propose Issue).
+  3. Complaints Management Portal:
+     - Category filters, status tags, resolution timestamps, and admin response notes.
+  4. Maintenance & Billing Ledger:
+     - Month-by-month billing history, payment modal with UPI reference input, and payment receipt modal.
+  5. Resident Democratic Voting:
+     - Community capital proposals with dynamic progress bars, target vote thresholds, and vote buttons.
+  6. Society Communication Hub:
+     - Announcement feed with alert banners (Emergency, Maintenance, General).
+     - Encrypted Society Chat Groups (Community Lounge, Gate Security, Committee, Tower Groups).
+  7. Resident Directory:
+     - Directory of all flats and residents with PII masking for non-admin accounts.
+  8. Platform Administrator Scope:
+     - Telemetry & Infrastructure dashboard.
+     - Societies Registry table with approve/reject actions.
+     - Tenant Privacy Shield: When logged in as `ROLE_PLATFORM_ADMIN`, domestic navigation links 
+       (Complaints, Bills, Chat, Voting) are locked behind an cryptographic hardware privacy banner 
+       indicating zero-knowledge isolation.
+
+====================================================================================================
+10. PERFORMANCE OPTIMIZATIONS, CONCURRENCY & OBSERVABILITY
+====================================================================================================
+Recent High-Impact Optimizations Applied:
+  1. Single-Pass JWT Validation: Pre-cached `SecretKey` and `JwtParser` in `JwtService` eliminates 
+     2-3 repetitive parsing and cryptographic signature checks per request.
+  2. Redis Rate Limiter O(1) Expiry: Removed redundant `redisTemplate.getExpire()` calls; sets 60-second 
+     TTL exclusively on initial key generation (`count == 1L`).
+  3. MultiTenantMongoTemplate Reflection Cache: Implemented `NO_TENANT_FIELD` sentinel in 
+     `TENANT_FIELD_CACHE`, converting negative field lookups from expensive repeated reflection 
+     hierarchy traversals to instant O(1) map hits.
+  4. SecurityConfig ObjectMapper Reuse: Replaced ad-hoc `new ObjectMapper()` allocations inside 
+     authentication error handlers with a static shared singleton.
+  5. UserDetailsService In-Memory Caching: 60-second concurrent in-memory caching eliminates redundant 
+     MongoDB hits during burst requests from authenticated clients.
+  6. Dashboard Parallel Query Fan-Out: Executes 12 MongoDB counts concurrently using Project Loom 
+     Virtual Threads and `CompletableFuture.allOf(...)`, combined with a 10-second per-society cache.
+  7. Redis Connection Pooling: Configured Lettuce asynchronous connection pool with `commons-pool2` 
+     (max-active: 64, max-idle: 16, min-idle: 4).
+  8. Observability & Telemetry: Integrated Spring Boot Actuator with Prometheus scraping 
+     (`/actuator/prometheus`) and pre-built Grafana dashboards monitoring JVM heap, virtual thread 
+     pinning, HTTP request latencies, and MongoDB connection metrics.
+
+====================================================================================================
+                                       END OF SPECIFICATION
+====================================================================================================

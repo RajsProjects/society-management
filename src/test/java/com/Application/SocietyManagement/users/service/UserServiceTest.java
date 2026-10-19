@@ -1,9 +1,13 @@
 package com.Application.SocietyManagement.users.service;
 
 import com.Application.SocietyManagement.core.tenant.TenantContext;
+import com.Application.SocietyManagement.communication.service.SocietyGroupService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
+import com.Application.SocietyManagement.users.dto.UpdateResidentRequest;
+import com.Application.SocietyManagement.users.dto.UserResponseDto;
 import com.Application.SocietyManagement.users.dto.UserSummarydto;
 import com.Application.SocietyManagement.users.entity.User;
+import com.Application.SocietyManagement.users.enums.PlatformRole;
 import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
@@ -13,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -27,6 +32,8 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private SocietyGroupService societyGroupService;
+    @Mock private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserService userService;
@@ -331,6 +338,140 @@ class UserServiceTest {
 
             result.getContent().forEach(dto ->
                     assertThat(dto).doesNotHaveToString("password"));
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteUser")
+    class DeleteUserTests {
+
+        @Test
+        @DisplayName("PLATFORM_ADMIN successfully deletes user and cleans groups")
+        void deleteUser_platformAdmin_success() {
+            User platformAdmin = User.builder()
+                    .platformRole(PlatformRole.PLATFORM_ADMIN)
+                    .email("platform@admin.com")
+                    .build();
+            platformAdmin.setId("admin-id");
+
+            User targetUser = User.builder()
+                    .email("target@user.com")
+                    .societyId("test-society-id")
+                    .build();
+            targetUser.setId("target-id");
+
+            when(userRepository.findById("target-id")).thenReturn(Optional.of(targetUser));
+
+            userService.deleteUser("target-id", platformAdmin);
+
+            verify(societyGroupService).removeUserFromAllGroups("target-id");
+            verify(userRepository).delete(targetUser);
+        }
+
+        @Test
+        @DisplayName("Non-platform admin throws 403 Forbidden")
+        void deleteUser_nonPlatformAdmin_throwsForbidden() {
+            User societyAdmin = User.builder()
+                    .platformRole(PlatformRole.SOCIETY_USER)
+                    .role(Roles.ADMIN)
+                    .email("admin@society.com")
+                    .build();
+            societyAdmin.setId("society-admin-id");
+
+            assertThatThrownBy(() -> userService.deleteUser("any-id", societyAdmin))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException rse = (ResponseStatusException) ex;
+                        assertThat(rse.getStatusCode().value()).isEqualTo(403);
+                        assertThat(rse.getReason()).contains("Only platform administrators can delete users");
+                    });
+
+            verify(userRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("Platform admin deleting oneself throws 400 Bad Request")
+        void deleteUser_selfDeletion_throwsBadRequest() {
+            User platformAdmin = User.builder()
+                    .platformRole(PlatformRole.PLATFORM_ADMIN)
+                    .email("platform@admin.com")
+                    .build();
+            platformAdmin.setId("admin-id");
+
+            User target = User.builder().build();
+            target.setId("admin-id");
+            when(userRepository.findById("admin-id")).thenReturn(Optional.of(target));
+
+            assertThatThrownBy(() -> userService.deleteUser("admin-id", platformAdmin))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException rse = (ResponseStatusException) ex;
+                        assertThat(rse.getStatusCode().value()).isEqualTo(400);
+                        assertThat(rse.getReason()).contains("Cannot delete your own platform admin account");
+                    });
+        }
+    }
+
+    @Nested
+    @DisplayName("updateResident")
+    class UpdateResidentTests {
+
+        @Test
+        @DisplayName("Society admin updates resident details and replaces resident")
+        void updateResident_societyAdmin_success() {
+            User adminCaller = User.builder()
+                    .role(Roles.ADMIN)
+                    .platformRole(PlatformRole.SOCIETY_USER)
+                    .societyId("test-society-id")
+                    .email("admin@test.com")
+                    .build();
+            adminCaller.setId("admin-1");
+
+            residentUser.setId("res-1");
+            when(userRepository.findByIdAndSocietyId("res-1", "test-society-id")).thenReturn(Optional.of(residentUser));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            UpdateResidentRequest req = UpdateResidentRequest.builder()
+                    .firstName("Alice")
+                    .lastName("Smith")
+                    .phone("9998887776")
+                    .flatId("B-202")
+                    .isOwner(false)
+                    .build();
+
+            UserResponseDto response = userService.updateResident("res-1", req, adminCaller);
+
+            assertThat(response).isNotNull();
+            assertThat(residentUser.getFirstName()).isEqualTo("Alice");
+            assertThat(residentUser.getLastName()).isEqualTo("Smith");
+            assertThat(residentUser.getPhone()).isEqualTo("9998887776");
+            assertThat(residentUser.getFlatId()).isEqualTo("B-202");
+            assertThat(residentUser.isOwner()).isFalse();
+            verify(societyGroupService).autoJoinResident(eq("test-society-id"), eq("res-1"));
+        }
+
+        @Test
+        @DisplayName("Society admin attempting to update platform admin throws 403 Forbidden")
+        void updateResident_modifyPlatformAdmin_throwsForbidden() {
+            User adminCaller = User.builder()
+                    .role(Roles.ADMIN)
+                    .platformRole(PlatformRole.SOCIETY_USER)
+                    .societyId("test-society-id")
+                    .build();
+
+            User platformAdminTarget = User.builder()
+                    .platformRole(PlatformRole.PLATFORM_ADMIN)
+                    .societyId("test-society-id")
+                    .build();
+            platformAdminTarget.setId("plat-1");
+
+            when(userRepository.findByIdAndSocietyId("plat-1", "test-society-id")).thenReturn(Optional.of(platformAdminTarget));
+
+            UpdateResidentRequest req = UpdateResidentRequest.builder().firstName("Test").lastName("Test").build();
+
+            assertThatThrownBy(() -> userService.updateResident("plat-1", req, adminCaller))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(403));
         }
     }
 }

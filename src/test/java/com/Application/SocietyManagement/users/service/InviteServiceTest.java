@@ -41,6 +41,7 @@ class InviteServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private EmailService emailService;
+    @Mock private com.Application.SocietyManagement.communication.service.SocietyGroupService societyGroupService;
 
     @InjectMocks
     private InviteService inviteService;

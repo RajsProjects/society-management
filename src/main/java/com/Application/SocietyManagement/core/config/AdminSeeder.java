@@ -1,5 +1,6 @@
 package com.Application.SocietyManagement.core.config;
 
+import com.Application.SocietyManagement.communication.service.SocietyGroupService;
 import com.Application.SocietyManagement.society.entity.Society;
 import com.Application.SocietyManagement.society.enums.SocietyStatus;
 import com.Application.SocietyManagement.society.enums.SubscriptionStatus;
@@ -28,6 +29,7 @@ public class AdminSeeder {
     private final UserRepository userRepository;
     private final SocietyRepository societyRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SocietyGroupService societyGroupService;
 
     @Value("${platform.admin.email}")
     private String adminEmail;
@@ -105,6 +107,28 @@ public class AdminSeeder {
                 userRepository.save(admin);
                 log.info("Platform admin seeded: {}", cleanEmail);
             });
+
+            // Ensure all registered non-platform societies have their official 1 community group created
+            // and their residents auto-joined.
+            if (societyGroupService != null) {
+                societyRepository.findAll().stream()
+                        .filter(s -> !"PLATFORM-001".equals(s.getRegistrationNumber()))
+                        .forEach(s -> {
+                            try {
+                                societyGroupService.createOrGetGroupForSociety(s);
+                                userRepository.findBySocietyId(s.getId(), org.springframework.data.domain.Pageable.unpaged())
+                                        .forEach(u -> {
+                                            try {
+                                                societyGroupService.autoJoinResident(s.getId(), u.getId());
+                                            } catch (Exception ex) {
+                                                log.debug("Auto-join resident during seeder for {}: {}", u.getEmail(), ex.getMessage());
+                                            }
+                                        });
+                            } catch (Exception ex) {
+                                log.warn("Failed to verify society group during seeding for society {}: {}", s.getId(), ex.getMessage());
+                            }
+                        });
+            }
         };
     }
 }

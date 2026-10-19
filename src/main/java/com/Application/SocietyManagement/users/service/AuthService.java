@@ -25,6 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final SocietyRepository societyRepository;
+    private final com.Application.SocietyManagement.communication.service.SocietyGroupService societyGroupService;
 
     public AuthResponse signup(SignupRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -62,7 +63,12 @@ public class AuthService {
                 .status(Status.PENDING)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Automatically join the resident to their society's official group
+        if (societyGroupService != null && resolvedSocietyId != null) {
+            societyGroupService.autoJoinResident(resolvedSocietyId, savedUser.getId());
+        }
 
         return AuthResponse.builder()
                 .message("Registration successful. Awaiting admin approval.")

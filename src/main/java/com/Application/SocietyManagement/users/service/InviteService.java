@@ -1,6 +1,7 @@
 package com.Application.SocietyManagement.users.service;
 
 import com.Application.SocietyManagement.communication.email.service.EmailService;
+import com.Application.SocietyManagement.communication.service.SocietyGroupService;
 import com.Application.SocietyManagement.core.tenant.TenantContext;
 import com.Application.SocietyManagement.users.dto.AcceptInviteRequest;
 import com.Application.SocietyManagement.users.dto.AuthResponse;
@@ -33,6 +34,7 @@ public class InviteService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final SocietyGroupService societyGroupService;
 
     public Map<String, String> invite(InviteRequest request, User currentUser) {
         if (currentUser == null) {
@@ -156,6 +158,11 @@ public class InviteService {
                 .build();
 
         User saved = userRepository.save(user);
+
+        // Auto-join society group
+        if (societyGroupService != null && invite.getSocietyId() != null) {
+            societyGroupService.autoJoinResident(invite.getSocietyId(), saved.getId());
+        }
 
         // mark invite as used
         invite.setUsed(true);
