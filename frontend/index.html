@@ -30,20 +30,21 @@
         decoding="async"
       />
 
-      <div class="hero-badge">
-        <div class="hero-badge-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
+        <div class="hero-badge">
+          <div class="hero-badge-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div class="hero-badge-text">
+            <h4>One secure workspace</h4>
+            <p>Complaints, maintenance dues, notices and community voting for every resident and committee member.</p>
+          </div>
         </div>
-        <div class="hero-badge-text">
-          <h4>Vibrant Community Living</h4>
-          <p>Over 12,000+ residents connected across secure societies.</p>
-        </div>
-      </div>
+
     </section>
 
     <!-- ── Right Form Panel ── -->
@@ -56,14 +57,10 @@
           <p id="authSubtitle" class="auth-subtitle">Join your residential society portal</p>
         </header>
 
-        <!-- Segmented Role Tabs -->
-        <div class="role-segment" role="tablist">
-          <button type="button" class="segment-btn active" id="tabResident" onclick="setRole('RESIDENT')">
-            Resident / Tenant
-          </button>
-          <button type="button" class="segment-btn" id="tabAdmin" onclick="setRole('ADMIN')">
-            Society Management
-          </button>
+        <!-- New accounts are always created as Residents; an admin promotes them later. -->
+        <div class="auth-role-note">
+          New accounts are created as <strong>Residents</strong>. A society administrator can
+          change your role from User Management after approving your account.
         </div>
 
         <!-- Society Selector / Join Code -->
@@ -88,59 +85,33 @@
           </div>
         </div>
 
-        <!-- Social Sign-in -->
-        <div class="social-grid">
-          <button type="button" class="btn-social" onclick="handleSocialAuth('Google')">
-            <svg viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            Sign in with Google
-          </button>
-          <button type="button" class="btn-social" onclick="handleSocialAuth('Microsoft')">
-            <svg viewBox="0 0 23 23">
-              <path fill="#f35325" d="M1 1h10v10H1z"/>
-              <path fill="#81bc06" d="M12 1h10v10H12z"/>
-              <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-              <path fill="#ffba08" d="M12 12h10v10H12z"/>
-            </svg>
-            Sign in with Microsoft
-          </button>
-        </div>
-
-        <div class="auth-divider">
-          <span>or</span>
-        </div>
-
         <!-- Auth Form -->
         <form id="authForm" onsubmit="handleFormSubmit(event)" novalidate>
           <div class="form-group form-row-2" id="nameRow">
             <div>
               <label for="firstNameInput" class="form-label">First Name</label>
-              <input type="text" id="firstNameInput" class="form-input" placeholder="e.g. Rahul" value="Rahul" />
+              <input type="text" id="firstNameInput" class="form-input" placeholder="e.g. Rahul" autocomplete="given-name" />
             </div>
             <div>
               <label for="lastNameInput" class="form-label">Last Name</label>
-              <input type="text" id="lastNameInput" class="form-input" placeholder="e.g. Sharma" value="Sharma" />
+              <input type="text" id="lastNameInput" class="form-input" placeholder="e.g. Sharma" autocomplete="family-name" />
             </div>
           </div>
 
           <div class="form-group">
             <label for="emailInput" class="form-label">Email <span class="required">*</span></label>
-            <input type="email" id="emailInput" class="form-input" placeholder="e.g. rahul@samaaj.in" value="rahul@samaaj.in" required />
+            <input type="email" id="emailInput" class="form-input" placeholder="e.g. rahul@samaaj.in" autocomplete="email" required />
           </div>
 
           <div class="form-group" id="flatGroup">
             <label for="flatInput" class="form-label">Flat / Unit Number <span class="required">*</span></label>
-            <input type="text" id="flatInput" class="form-input" placeholder="e.g. Tower B - 302" value="Tower B - 302" />
+            <input type="text" id="flatInput" class="form-input" placeholder="e.g. Tower B - 302" />
           </div>
 
           <div class="form-group">
             <label for="passwordInput" class="form-label">Password <span class="required">*</span></label>
             <div class="input-wrapper">
-              <input type="password" id="passwordInput" class="form-input" placeholder="••••••••" value="Password123!" required />
+              <input type="password" id="passwordInput" class="form-input" placeholder="At least 8 characters" autocomplete="current-password" required />
               <button type="button" class="btn-password-toggle" onclick="togglePasswordVisibility()" aria-label="Toggle password">
                 <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -149,7 +120,7 @@
               </button>
             </div>
             <div class="password-extra" id="forgotPasswordWrap" style="display: none;">
-              <a href="#" class="link-forgot" onclick="handleForgotPassword(event)">Forgot password?</a>
+              <a href="#" class="link-forgot" onclick="handleForgotPassword(event)">Trouble signing in? Contact support</a>
             </div>
           </div>
 
@@ -168,6 +139,23 @@
             <a href="javascript:void(0)" id="switchLink" onclick="toggleAuthMode()">Log in</a>
           </div>
         </form>
+
+        <!-- Signup submitted, awaiting society admin approval -->
+        <div id="authPendingPanel" class="auth-pending-panel" style="display: none;" role="status">
+          <div class="auth-pending-icon" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 7v5l3 2"></path>
+            </svg>
+          </div>
+          <h3 class="auth-pending-title">Registration submitted</h3>
+          <p class="auth-pending-text">
+            We created your account for <strong data-pending-email>your email</strong>.
+            Your society admin needs to approve it before you can sign in. You will receive an
+            email once the account is active.
+          </p>
+          <button type="button" class="btn-primary-action auth-pending-action" onclick="backToSignIn()">Back to sign in</button>
+        </div>
       </div>
     </section>
   </div>
@@ -247,7 +235,7 @@
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
             </svg>
             Society Groups
-            <span class="nav-badge" id="chatUnreadBadge" style="background: var(--brown-600)">E2EE</span>
+            <span class="nav-badge" id="chatUnreadBadge" style="background: var(--brown-600)">—</span>
           </a>
 
           <a href="javascript:void(0)" class="nav-link" data-view="announcements" onclick="navigate('announcements')">
@@ -266,6 +254,32 @@
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
             Residents Directory
+          </a>
+
+          <div class="nav-section-title">Management</div>
+          <a href="javascript:void(0)" class="nav-link" data-view="admin-users" id="navAdminUsers" onclick="navigate('admin-users')" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M19 8v6M22 11h-6"></path>
+            </svg>
+            User Management
+          </a>
+
+          <a href="javascript:void(0)" class="nav-link" data-view="billing" id="navBilling" onclick="navigate('billing')" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+            Plan &amp; Billing
+          </a>
+
+          <a href="javascript:void(0)" class="nav-link" data-view="profile" onclick="navigate('profile')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Profile &amp; Security
           </a>
         </div>
 
@@ -372,7 +386,7 @@
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              <span class="notification-indicator" id="notifBadgeCount">3</span>
+              <span class="notification-indicator" id="notifBadgeCount" style="display: none;">0</span>
             </button>
 
             <!-- In-App Notification Center Dropdown -->
@@ -405,7 +419,7 @@
                 <!-- Dynamically populated via app.js -->
               </div>
               <div class="notification-footer">
-                <span style="font-size: 0.74rem; color: var(--text-light);">Samaaj Core Engine v2.4.0 • E2EE Active</span>
+                <span style="font-size: 0.74rem; color: var(--text-light);">Samaaj Core Engine v2.4.0 • Server-verified access</span>
               </div>
             </div>
           </div>
@@ -437,11 +451,11 @@
              ========================================== -->
         <section id="view-dashboard" class="view-section active">
           <!-- Metrics -->
-          <div class="metrics-grid">
-            <div class="metric-card accent-brown">
+          <div class="metrics-grid" id="dashboardMetrics">
+            <div class="metric-card accent-brown" data-metric="flats">
               <div class="metric-data">
-                <h3 id="statFlats">184 / 200</h3>
-                <p>Occupied Flats (92%)</p>
+                <h3 id="statFlats">—</h3>
+                <p id="statFlatsLabel">Occupied Flats</p>
               </div>
               <div class="metric-icon-wrap">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -450,10 +464,10 @@
               </div>
             </div>
 
-            <div class="metric-card accent-black">
+            <div class="metric-card accent-black" data-metric="collection">
               <div class="metric-data">
-                <h3 id="statCollection">₹ 8,42,000</h3>
-                <p>Maintenance Collected (Oct)</p>
+                <h3 id="statCollection">—</h3>
+                <p id="statCollectionLabel">Bills Settled</p>
               </div>
               <div class="metric-icon-wrap">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -463,10 +477,10 @@
               </div>
             </div>
 
-            <div class="metric-card accent-gold">
+            <div class="metric-card accent-gold" data-metric="complaints">
               <div class="metric-data">
-                <h3 id="statComplaints">7 Active</h3>
-                <p>Complaints & Work Orders</p>
+                <h3 id="statComplaints">—</h3>
+                <p id="statComplaintsLabel">Complaints &amp; Work Orders</p>
               </div>
               <div class="metric-icon-wrap">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -477,10 +491,10 @@
               </div>
             </div>
 
-            <div class="metric-card accent-cream">
+            <div class="metric-card accent-cream" data-metric="proposals">
               <div class="metric-data">
-                <h3 id="statProposals">3 Live</h3>
-                <p>Community Voting Items</p>
+                <h3 id="statProposals">—</h3>
+                <p id="statProposalsLabel">Community Voting Items</p>
               </div>
               <div class="metric-icon-wrap">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -555,11 +569,12 @@
               </div>
               <div class="panel-actions">
                 <input type="text" class="search-bar-input" id="complaintsSearch" placeholder="Search ticket, unit..." oninput="renderComplaintsTable()">
-                <select class="filter-select" id="complaintsFilter" onchange="renderComplaintsTable()">
+                <select class="filter-select" id="complaintsFilter" onchange="reloadComplaints()">
                   <option value="ALL">All Statuses</option>
                   <option value="OPEN">Open</option>
                   <option value="IN_PROGRESS">In Progress</option>
                   <option value="RESOLVED">Resolved</option>
+                  <option value="REJECTED">Rejected</option>
                 </select>
                 <button class="btn-primary-action" onclick="openModal('complaintModal')">
                   + Lodge Complaint
@@ -584,6 +599,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="complaintsPagination" class="pagination-host"></div>
           </div>
         </section>
 
@@ -599,9 +615,10 @@
               </div>
               <div class="panel-actions">
                 <input type="text" class="search-bar-input" id="billsSearch" placeholder="Search invoice, month..." oninput="renderBillsTable()">
-                <select class="filter-select" id="billsFilter" onchange="renderBillsTable()">
+                <select class="filter-select" id="billsFilter" onchange="reloadBills()">
                   <option value="ALL">All Bills</option>
                   <option value="PENDING">Pending Dues</option>
+                  <option value="PENDING_VERIFICATION">Awaiting Verification</option>
                   <option value="PAID">Paid</option>
                   <option value="OVERDUE">Overdue</option>
                 </select>
@@ -628,6 +645,7 @@
                 </tbody>
               </table>
             </div>
+            <div id="billsPagination" class="pagination-host"></div>
           </div>
         </section>
 
@@ -682,7 +700,7 @@
             <div class="panel-header">
               <div class="panel-header-title">
                 <h2>Residential Directory & Flats</h2>
-                <p>Verified resident contact registry for Green Heights Residency</p>
+                <p id="directorySubtitle">Verified resident registry for your society</p>
               </div>
               <div class="panel-actions">
                 <input type="text" class="search-bar-input" id="directorySearch" placeholder="Search flat, name..." oninput="renderDirectoryTable()">
@@ -698,7 +716,6 @@
                     <th>Resident Name</th>
                     <th>Flat / Unit</th>
                     <th>Email</th>
-                    <th>Contact Phone</th>
                     <th>Role</th>
                     <th>Status</th>
                   </tr>
@@ -708,11 +725,177 @@
                 </tbody>
               </table>
             </div>
+            <div id="directoryPagination" class="pagination-host"></div>
           </div>
         </section>
 
         <!-- ==========================================
-             VIEW: SOCIETY GROUPS (WHATSAPP-STYLE E2EE CHAT)
+             VIEW: PROFILE & SECURITY
+             ========================================== -->
+        <section id="view-profile" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-header-title">
+                <h2>Profile &amp; Security</h2>
+                <p>Your identity, role and sign-in credentials</p>
+              </div>
+            </div>
+            <div class="modal-body">
+              <div class="profile-identity">
+                <div class="profile-avatar" id="profileInitials">RS</div>
+                <div class="profile-identity-text">
+                  <h3 id="profileDisplayName">Your name</h3>
+                  <p id="profileDisplayMeta">—</p>
+                </div>
+              </div>
+
+              <dl class="profile-kv">
+                <dt>Email</dt>
+                <dd id="profileEmail">—</dd>
+                <dt>Society role</dt>
+                <dd id="profileRole">—</dd>
+                <dt>Platform role</dt>
+                <dd id="profilePlatformRole">—</dd>
+                <dt>Flat / Unit</dt>
+                <dd id="profileFlat">—</dd>
+                <dt>Society</dt>
+                <dd id="profileSociety">—</dd>
+                <dt>Member since</dt>
+                <dd id="profileJoined">—</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="panel-card" style="margin-top: 20px;">
+            <div class="panel-header">
+              <div class="panel-header-title">
+                <h2>Change Password</h2>
+                <p>At least 8 characters, with an uppercase letter, a lowercase letter and a number</p>
+              </div>
+            </div>
+            <form onsubmit="handleChangePassword(event)">
+              <div class="modal-body">
+                <div class="form-group">
+                  <label class="form-label" for="currentPasswordInput">Current password</label>
+                  <input type="password" class="form-input" id="currentPasswordInput" autocomplete="current-password" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="newPasswordInput">New password</label>
+                  <input type="password" class="form-input" id="newPasswordInput" autocomplete="new-password" minlength="8" required oninput="updatePasswordStrength()">
+                  <div class="password-strength"><span class="password-strength-bar" id="passwordStrengthBar"></span></div>
+                  <small class="form-hint" id="passwordStrengthLabel">Enter a new password to check its strength.</small>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="confirmPasswordInput">Confirm new password</label>
+                  <input type="password" class="form-input" id="confirmPasswordInput" autocomplete="new-password" minlength="8" required>
+                  <small class="form-hint" id="passwordMatchLabel"></small>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="resetPasswordForm()">Reset</button>
+                <button type="submit" class="btn-primary-action" id="changePasswordBtn">Update password</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW: PLAN & BILLING (Society Admin)
+             ========================================== -->
+        <section id="view-billing" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-header-title">
+                <h2>Plan &amp; Billing</h2>
+                <p>Subscription for <span id="billingSocietyName">your society</span></p>
+              </div>
+              <div class="panel-actions">
+                <button class="btn-primary-action" onclick="refreshBilling()">Refresh</button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <div class="billing-summary">
+                <div class="billing-summary-item">
+                  <span class="label">Current plan</span>
+                  <span class="value" id="billingCurrentPlan">—</span>
+                </div>
+                <div class="billing-summary-item">
+                  <span class="label">Subscription status</span>
+                  <span class="value" id="billingStatus">—</span>
+                </div>
+                <div class="billing-summary-item">
+                  <span class="label" id="billingExpiryLabel">Renews on</span>
+                  <span class="value" id="billingExpiry">—</span>
+                </div>
+              </div>
+
+              <div class="plan-grid" id="planGrid">
+                <!-- Injected by renderPlanGrid() in app.js -->
+              </div>
+
+              <p class="inline-note" style="margin-top: 16px;">
+                Payments are processed by Razorpay. The order is created by the server and the
+                subscription is activated only after the payment signature is verified.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW: USER MANAGEMENT (Society Admin)
+             ========================================== -->
+        <section id="view-admin-users" class="view-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-header-title">
+                <h2>User Management</h2>
+                <p>Approve, block and re-role the residents of your society</p>
+              </div>
+              <div class="panel-actions">
+                <select class="filter-select" id="adminUsersRoleFilter" onchange="reloadAdminUsers(0)">
+                  <option value="">All roles</option>
+                  <option value="RESIDENT">Resident</option>
+                  <option value="ADMIN">Administrator</option>
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="ACCOUNTANT">Accountant</option>
+                  <option value="SECURITY">Security Officer</option>
+                </select>
+                <select class="filter-select" id="adminUsersStatusFilter" onchange="reloadAdminUsers(0)">
+                  <option value="">All statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="BLOCKED">Blocked</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+                <input type="text" class="search-bar-input" id="adminUsersSearch" placeholder="Search name or email..." oninput="renderAdminUsersTable()">
+                <button class="btn-primary-action" onclick="openModal('inviteModal')">
+                  + Invite Resident
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Flat / Unit</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersTableBody">
+                  <!-- Dynamic Rows -->
+                </tbody>
+              </table>
+            </div>
+            <div id="adminUsersPagination" class="pagination-host"></div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             VIEW: SOCIETY GROUPS (RESIDENT CHANNEL)
              ========================================== -->
         <section id="view-chat" class="view-section">
           <div class="chat-workspace" id="chatWorkspace">
@@ -726,24 +909,21 @@
                   </svg>
                   Society Groups
                 </h3>
-                <span class="e2ee-pill" title="Hardware-backed AES-GCM 256 End-to-End Encryption">
+                <span class="e2ee-pill" title="Server-enforced tenant isolation: every request is scoped to your society">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                  E2EE
+                  Scoped
                 </span>
               </div>
 
               <!-- Search Conversations -->
               <div class="chat-sidebar-search">
-                <input type="text" class="chat-search-input" id="chatSearchInput" placeholder="Search chats or messages..." oninput="handleFilterChatList()">
+                <input type="text" class="chat-search-input" id="chatSearchInput" placeholder="Search groups..." oninput="handleFilterChatList()">
               </div>
 
               <!-- Filter Pills -->
               <div class="chat-filter-pills">
                 <button class="chat-filter-pill active" onclick="filterChatCategory('ALL', this)">All Groups</button>
                 <button class="chat-filter-pill" onclick="filterChatCategory('COMMUNITY', this)">Community</button>
-                <button class="chat-filter-pill" onclick="filterChatCategory('ADMIN', this)">Committee</button>
-                <button class="chat-filter-pill" onclick="filterChatCategory('SECURITY', this)">Security</button>
-                <button class="chat-filter-pill" onclick="filterChatCategory('TOWERS', this)">Towers</button>
               </div>
 
               <!-- Groups List -->
@@ -763,19 +943,12 @@
                   </button>
                   <div class="chat-avatar" id="currentChatAvatar">🏡</div>
                   <div class="chat-main-header-text">
-                    <h3 id="currentChatTitle">Green Heights Community</h3>
-                    <span id="currentChatMembers">184 residents • Tap for encryption & members</span>
+                    <h3 id="currentChatTitle">Society Community</h3>
+                    <span id="currentChatMembers">Tap for members</span>
                   </div>
                 </div>
 
                 <div class="chat-main-header-actions">
-                  <button class="chat-action-btn" onclick="openE2EEVerifyModal()" title="Verify End-to-End Encryption Fingerprint">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                    <span>Verify Encryption</span>
-                  </button>
                   <button class="chat-action-btn" onclick="openModal('chatMembersModal')" title="View Group Members">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -799,12 +972,11 @@
 
               <!-- Chat Messages Body -->
               <div class="chat-messages-wrap" id="chatMessagesWrap">
-                <!-- E2EE Security Disclaimer -->
+                <!-- Tenant Isolation Notice -->
                 <div class="e2ee-security-banner">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -2px; margin-right: 4px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                  <strong>Messages in this society group are End-to-End Encrypted.</strong>
-                  No one outside this group, not even Samaaj administrators or servers, can read or listen to them.
-                  <a href="javascript:void(0)" class="e2ee-verify-link" onclick="openE2EEVerifyModal()">Tap to verify safety code</a>.
+                  <strong>Group membership is verified by the server.</strong>
+                  Only residents of your society are listed in this channel.
                 </div>
 
                 <!-- Date Divider -->
@@ -855,10 +1027,10 @@
                 </div>
 
                 <!-- Message Text Input -->
-                <input type="text" class="chat-message-field" id="chatMessageInput" placeholder="Type an encrypted message..." onkeydown="handleChatInputKey(event)">
+                <input type="text" class="chat-message-field" id="chatMessageInput" placeholder="Messaging is not connected yet — use the notice board" onkeydown="handleChatInputKey(event)" disabled>
 
                 <!-- Send Button -->
-                <button type="button" class="btn-chat-send" onclick="handleSendChatMessage()" title="Send Encrypted Message">
+                <button type="button" class="btn-chat-send" onclick="handleSendChatMessage()" title="Messaging is not connected yet" disabled>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -988,7 +1160,7 @@
                 <ul>
                   <li><span class="icon">✓</span> MultiTenantMongoTemplate auto-isolates tenant collections</li>
                   <li><span class="icon">✓</span> Platform Admin role decoupled from domestic RESIDENT / ADMIN</li>
-                  <li><span class="icon">✓</span> AES-GCM 256 hardware keys held only in resident browsers</li>
+                  <li><span class="icon">✓</span> Per-society data isolation enforced on every request</li>
                 </ul>
               </div>
             </div>
@@ -1021,7 +1193,7 @@
                     <th>Society Name & Code</th>
                     <th>Location</th>
                     <th>Flats</th>
-                    <th>Admin Contact</th>
+                    <th>Join Code</th>
                     <th>Status</th>
                     <th style="text-align: right;">Action</th>
                   </tr>
@@ -1151,7 +1323,7 @@
                 Restricted Domestic Society Entities
               </h4>
               <ul>
-                <li><span class="icon">🔒</span> <strong>Society E2EE Group Chats:</strong> Hardware AES-GCM encrypted in resident browsers; inaccessible to platform servers.</li>
+                <li><span class="icon">🔒</span> <strong>Society Group Channel:</strong> Membership restricted to verified residents of the society.</li>
                 <li><span class="icon">🔒</span> <strong>Resident Complaints & Grievances:</strong> Confidential to society committee and complainant.</li>
                 <li><span class="icon">🔒</span> <strong>Maintenance Ledgers & Unit Dues:</strong> Household financial data restricted to society treasurer.</li>
                 <li><span class="icon">🔒</span> <strong>Society AGM Polls & Ballots:</strong> Voting choices sealed within society tenant.</li>
@@ -1328,26 +1500,23 @@
           <div class="form-group">
             <label class="form-label">Billing Target Unit</label>
             <select class="form-input" id="billTargetUnit" required>
-              <option value="ALL">All Society Units (Batch 184 Flats)</option>
-              <option value="Tower B - 302">Tower B - 302 (Rahul Sharma)</option>
-              <option value="Tower A - 104">Tower A - 104 (Priya Mohan)</option>
-              <option value="Tower C - 501">Tower C - 501 (Amit Kumar)</option>
-              <option value="Tower D - 204">Tower D - 204 (Neha Gupta)</option>
+              <option value="">Select a unit</option>
             </select>
+            <small class="form-hint">One invoice per unit. The resident must already be in the registry.</small>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Assessment Month</label>
-              <input type="text" class="form-input" id="billMonth" placeholder="e.g. November 2026" value="November 2026" required>
+              <input type="text" class="form-input" id="billMonth" placeholder="e.g. 2026-11" pattern="\d{4}-\d{2}" required>
             </div>
             <div class="form-group">
               <label class="form-label">Amount (₹)</label>
-              <input type="number" class="form-input" id="billAmount" placeholder="3500" value="3500" required>
+              <input type="number" class="form-input" id="billAmount" placeholder="3500" min="1" step="1" required>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Due Date</label>
-            <input type="text" class="form-input" id="billDueDate" placeholder="e.g. Nov 15, 2026" value="Nov 15, 2026" required>
+            <input type="date" class="form-input" id="billDueDate" required>
           </div>
           <div class="form-group">
             <label class="form-label">Line Item Notes / Breakdown</label>
@@ -1392,12 +1561,14 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Occupancy Type</label>
+            <label class="form-label">Account Role</label>
             <select class="form-input" id="residentRole" required>
-              <option value="Resident (Owner)">Resident (Owner)</option>
-              <option value="Resident (Tenant)">Resident (Tenant)</option>
-              <option value="Committee Member">Management Committee</option>
+              <option value="RESIDENT">Resident</option>
+              <option value="ADMIN">Society Administrator</option>
+              <option value="ACCOUNTANT">Accountant</option>
+              <option value="SECURITY">Security Officer</option>
             </select>
+            <small class="form-hint">The invitee sets their own password from the emailed link.</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -1478,45 +1649,6 @@
     </div>
   </div>
 
-  <!-- Modal: Verify End-to-End Encryption Safety Code -->
-  <div class="modal-overlay" id="e2eeVerifyModal">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3>Verify Security Safety Number</h3>
-        <button class="btn-close-modal" onclick="closeModal('e2eeVerifyModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px;">
-          To verify that messages and media in <strong id="verifyModalGroupName">Green Heights Community</strong> are genuinely end-to-end encrypted, compare the 60-digit safety number below with another resident or scan the QR code.
-        </p>
-
-        <div class="qr-code-placeholder" id="qrCodePlaceholder">
-          <svg width="110" height="110" viewBox="0 0 24 24" fill="var(--black-900)">
-            <path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h3v2h-3zm-3 2h2v3h-2zm3 3h3v3h-3zm-5 1h2v2h-2zm2-4h1v1h-1zm3-3h1v1h-1zm-1 3h1v1h-1z"/>
-          </svg>
-        </div>
-
-        <div class="safety-number-box">
-          <div style="font-size: 0.72rem; font-weight: 700; color: var(--brown-700); text-transform: uppercase; margin-bottom: 4px;">60-Digit Cryptographic Fingerprint</div>
-          <div class="safety-number-grid">
-            <span>48201</span><span>94820</span><span>18492</span><span>84920</span>
-            <span>19482</span><span>01948</span><span>58392</span><span>01948</span>
-            <span>29482</span><span>01948</span><span>20194</span><span>82019</span>
-          </div>
-          <small style="font-size: 0.74rem; color: var(--text-light);">Hardware Cipher: AES-GCM-256 + WebCrypto PBKDF2 Key Derivation</small>
-        </div>
-
-        <div style="background: var(--cream-200); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 0.78rem; color: var(--brown-900); display: flex; align-items: center; gap: 8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          <span id="fingerprintStatusText">All group member keys authenticated against local society key ring.</span>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick="closeModal('e2eeVerifyModal')">Close</button>
-        <button type="button" class="btn-primary-action" onclick="handleMarkFingerprintVerified()">Mark as Verified</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Modal: Broadcast App / Society Change Notice (Admin) -->
   <div class="modal-overlay" id="appChangeNoticeModal">
@@ -1627,26 +1759,104 @@
             <label class="form-label">Registration / Society Code *</label>
             <input type="text" class="form-control" id="newSocietyRegNo" placeholder="e.g. SOC-DLF-808" required>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label">Address *</label>
+            <input type="text" class="form-control" id="newSocietyAddress" placeholder="e.g. 14 Cyber Greens Road" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
             <div class="form-group">
               <label class="form-label">City *</label>
               <input type="text" class="form-control" id="newSocietyCity" placeholder="Gurugram" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Total Flats *</label>
-              <input type="number" class="form-control" id="newSocietyFlats" placeholder="250" required>
+              <label class="form-label">State *</label>
+              <input type="text" class="form-control" id="newSocietyState" placeholder="Haryana" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pincode *</label>
+              <input type="text" class="form-control" id="newSocietyPincode" placeholder="122002" pattern="[1-9][0-9]{5}" maxlength="6" required>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label">Total Flats *</label>
+            <input type="number" class="form-control" id="newSocietyFlats" placeholder="250" min="1" max="5000" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label class="form-label">Admin First Name *</label>
+              <input type="text" class="form-control" id="newSocietyAdminFirstName" placeholder="Aarav" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Admin Last Name *</label>
+              <input type="text" class="form-control" id="newSocietyAdminLastName" placeholder="Sharma" required>
             </div>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label class="form-label">Admin Email *</label>
             <input type="email" class="form-control" id="newSocietyAdminEmail" placeholder="admin@residency.com" required>
           </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div class="form-group">
+              <label class="form-label">Admin Phone *</label>
+              <input type="tel" class="form-control" id="newSocietyAdminPhone" placeholder="9876543210" pattern="[6-9][0-9]{9}" maxlength="10" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Admin Password *</label>
+              <input type="password" class="form-control" id="newSocietyAdminPassword" placeholder="Minimum 8 characters" minlength="8" required>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label">Registration Certificate</label>
+            <input type="file" class="form-control" id="newSocietyDocument" accept="application/pdf,image/*">
+            <small class="form-hint">Optional. PDF or image, up to 5 MB.</small>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-cancel" onclick="closeModal('onboardSocietyModal')">Cancel</button>
           <button type="submit" class="btn-submit">Register Society</button>
+
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Bill receipt detail -->
+  <div class="modal-overlay" id="billDetailModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Invoice Details</h3>
+        <button type="button" class="btn-close-modal" onclick="closeModal('billDetailModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <dl class="detail-list">
+          <div class="detail-row"><dt>Invoice</dt><dd id="billDetailId">—</dd></div>
+          <div class="detail-row"><dt>Unit</dt><dd id="billDetailUnit">—</dd></div>
+          <div class="detail-row"><dt>Billing cycle</dt><dd id="billDetailMonth">—</dd></div>
+          <div class="detail-row"><dt>Amount</dt><dd id="billDetailAmount">—</dd></div>
+          <div class="detail-row"><dt>Due date</dt><dd id="billDetailDueDate">—</dd></div>
+          <div class="detail-row"><dt>Status</dt><dd><span class="status-badge" id="billDetailStatus">—</span></dd></div>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('billDetailModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Generic confirmation for destructive actions -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-header">
+        <h3 id="confirmTitle">Please confirm</h3>
+        <button type="button" class="btn-close-modal" onclick="closeModal('confirmModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" class="confirm-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
+        <button type="button" class="btn-danger" id="confirmActionBtn">Confirm</button>
+      </div>
     </div>
   </div>
 
@@ -1679,11 +1889,15 @@
   </nav>
 
   <!-- Interactive Floating Toast -->
-  <div class="app-floating-toast" id="appFloatingToast">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  <div class="app-floating-toast" id="appFloatingToast" role="status" aria-live="polite">
+    <svg id="toastIconSuccess" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    <svg id="toastIconError" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
     <span id="floatingToastMsg">Action completed</span>
   </div>
 
+  <script src="api.js"></script>
+  <script src="session.js"></script>
+  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

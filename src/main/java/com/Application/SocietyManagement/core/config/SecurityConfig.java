@@ -43,15 +43,25 @@ public class SecurityConfig {
     private final JwtService jwtService;
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
+    private final com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter;
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
                           JwtService jwtService,
                           RateLimitingFilter rateLimitingFilter,
                           SubscriptionEnforcementFilter subscriptionEnforcementFilter) {
+        this(customUserDetailsService, jwtService, rateLimitingFilter, subscriptionEnforcementFilter, new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter());
+    }
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService,
+                          JwtService jwtService,
+                          RateLimitingFilter rateLimitingFilter,
+                          SubscriptionEnforcementFilter subscriptionEnforcementFilter,
+                          com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter) {
         this.customUserDetailsService = customUserDetailsService;
         this.jwtService = jwtService;
         this.rateLimitingFilter = rateLimitingFilter;
         this.subscriptionEnforcementFilter = subscriptionEnforcementFilter;
+        this.tenantContextCleanupFilter = tenantContextCleanupFilter != null ? tenantContextCleanupFilter : new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter();
     }
 
     @Value("${security.pepper}")
@@ -180,6 +190,7 @@ public class SecurityConfig {
                 )
                 .userDetailsService(customUserDetailsService)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .addFilterBefore(tenantContextCleanupFilter, RateLimitingFilter.class)
                 .addFilterBefore(rateLimitingFilter,
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(

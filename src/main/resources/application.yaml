@@ -152,6 +152,6 @@ platform:
 
 subscription:
   enforcement:
-    enabled: false
+    enabled: ${SUBSCRIPTION_ENFORCEMENT_ENABLED:false}
   scheduler:
-    enabled: false
+    enabled: ${SUBSCRIPTION_SCHEDULER_ENABLED:false}
