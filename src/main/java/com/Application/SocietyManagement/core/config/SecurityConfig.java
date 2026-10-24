@@ -28,7 +28,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
-import java.util.Arrays;
 
 
 @Configuration
@@ -43,15 +42,25 @@ public class SecurityConfig {
     private final JwtService jwtService;
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
+    private final com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter;
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
                           JwtService jwtService,
                           RateLimitingFilter rateLimitingFilter,
                           SubscriptionEnforcementFilter subscriptionEnforcementFilter) {
+        this(customUserDetailsService, jwtService, rateLimitingFilter, subscriptionEnforcementFilter, new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter());
+    }
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService,
+                          JwtService jwtService,
+                          RateLimitingFilter rateLimitingFilter,
+                          SubscriptionEnforcementFilter subscriptionEnforcementFilter,
+                          com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter) {
         this.customUserDetailsService = customUserDetailsService;
         this.jwtService = jwtService;
         this.rateLimitingFilter = rateLimitingFilter;
         this.subscriptionEnforcementFilter = subscriptionEnforcementFilter;
+        this.tenantContextCleanupFilter = tenantContextCleanupFilter != null ? tenantContextCleanupFilter : new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter();
     }
 
     @Value("${security.pepper}")
@@ -79,10 +88,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isEmpty())
-                .toList());
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "X-Trace-Id", "Content-Disposition"));
@@ -180,6 +186,7 @@ public class SecurityConfig {
                 )
                 .userDetailsService(customUserDetailsService)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .addFilterBefore(tenantContextCleanupFilter, RateLimitingFilter.class)
                 .addFilterBefore(rateLimitingFilter,
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(

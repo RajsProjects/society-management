@@ -171,7 +171,6 @@ class IssueServiceTest {
                     .thenReturn(page);
             when(userRepository.findAllById(any()))
                     .thenReturn(List.of(creator));
-            when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
             PagedResponse<IssueResponse> result =
                     issueService.getIssues(null, "createdAt", "desc", 0, 20);
@@ -192,7 +191,6 @@ class IssueServiceTest {
                     .thenReturn(page);
             when(userRepository.findAllById(any()))
                     .thenReturn(List.of(creator));
-            when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
             issueService.getIssues(IssueStatus.OPEN, "createdAt", "desc", 0, 20);
 
@@ -210,9 +208,11 @@ class IssueServiceTest {
             Issue issue1 = Issue.builder()
                     .title("Issue 1").creatorId("c1")
                     .societyId("test-society-id").build();
+            issue1.setId("i1");
             Issue issue2 = Issue.builder()
                     .title("Issue 2").creatorId("c2")
                     .societyId("test-society-id").build();
+            issue2.setId("i2");
 
             Page<Issue> page = new PageImpl<>(List.of(issue1, issue2));
             when(issueRepository.findBySocietyId(
@@ -220,8 +220,9 @@ class IssueServiceTest {
                     .thenReturn(page);
             when(userRepository.findAllById(any()))
                     .thenReturn(List.of(creator));
-            when(issueVoteRepository.countByIssueId(null))
-                    .thenReturn(5L, 2L);
+            when(issueVoteRepository.countVotesByIssueIds(any()))
+                    .thenReturn(List.of(new com.Application.SocietyManagement.issue.dto.IssueVoteCount("i1", 5L),
+                                        new com.Application.SocietyManagement.issue.dto.IssueVoteCount("i2", 2L)));
 
             PagedResponse<IssueResponse> result =
                     issueService.getIssues(null, "voteCount", "desc", 0, 20);
@@ -247,7 +248,6 @@ class IssueServiceTest {
                     .thenReturn(page);
             when(userRepository.findAllById(any()))
                     .thenReturn(List.of(creator));
-            when(issueVoteRepository.countByIssueId(any())).thenReturn(0L);
 
             issueService.getIssues(null, "createdAt", "desc", 0, 20);
 

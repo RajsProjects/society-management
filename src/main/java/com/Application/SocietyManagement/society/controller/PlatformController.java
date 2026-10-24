@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.Application.SocietyManagement.users.service.UserService;
+
 import java.lang.management.ManagementFactory;
 import java.time.Instant;
 import java.util.Map;
@@ -24,10 +26,12 @@ public class PlatformController {
 
     private final SocietyRepository societyRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
 
-    public PlatformController(SocietyRepository societyRepository, UserRepository userRepository) {
+    public PlatformController(SocietyRepository societyRepository, UserRepository userRepository, UserService userService) {
         this.societyRepository = societyRepository;
         this.userRepository = userRepository;
+        this.userService = userService;
     }
 
     @Operation(summary = "Get Platform Overview & System Health",
@@ -86,6 +90,15 @@ public class PlatformController {
                 "dispatchedBy", currentUser != null ? currentUser.getEmail() : "Platform Admin",
                 "timestamp", Instant.now().toString()
         ));
+    }
+
+    @Operation(summary = "Permanently Delete User",
+            description = "Permanently deletes a user from the platform and removes them from all society groups. Restricted to PLATFORM_ADMIN.")
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable String userId,
+                                                          @AuthenticationPrincipal User currentUser) {
+        userService.deleteUser(userId, currentUser);
+        return ResponseEntity.ok(Map.of("message", "User deleted successfully from platform"));
     }
 
     @Data

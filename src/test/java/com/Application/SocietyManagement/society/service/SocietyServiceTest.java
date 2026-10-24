@@ -64,6 +64,9 @@ class SocietyServiceTest {
     @Mock
     private JoinCodeGenerator joinCodeGenerator;
 
+    @Mock
+    private com.Application.SocietyManagement.communication.service.SocietyGroupService societyGroupService;
+
     @InjectMocks
     private SocietyService societyService;
 

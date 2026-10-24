@@ -35,6 +35,7 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private com.Application.SocietyManagement.society.repository.SocietyRepository societyRepository;
+    @Mock private com.Application.SocietyManagement.communication.service.SocietyGroupService societyGroupService;
 
     @InjectMocks
     private AuthService authService;

@@ -92,4 +92,41 @@ public class AdminController {
             @RequestBody @Valid UpdateStatusRequest request) {
         return ResponseEntity.ok(userService.updateStatus(userId, request.getStatus()));
     }
+
+    @Operation(
+            summary = "Update / Replace resident details",
+            description = "Allows society administrators to update resident details or replace a resident (e.g. flat tenancy handover). Cannot delete the user."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Resident updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "403", description = "Unauthorized or cannot modify administrator"),
+            @ApiResponse(responseCode = "404", description = "Resident not found")
+    })
+    @PutMapping("/{userId}/resident")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponseDto> updateResident(
+            @Parameter(description = "User ID of resident") @PathVariable String userId,
+            @RequestBody @Valid com.Application.SocietyManagement.users.dto.UpdateResidentRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.updateResident(userId, request, currentUser));
+    }
+
+    @Operation(
+            summary = "Delete user permanently",
+            description = "Permanently deletes a user from the platform and removes them from all society groups. Strictly restricted to PLATFORM_ADMIN."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User deleted successfully"),
+            @ApiResponse(responseCode = "403", description = "Forbidden. Only platform admin can delete users"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
+    public ResponseEntity<java.util.Map<String, String>> deleteUser(
+            @Parameter(description = "User ID to delete") @PathVariable String userId,
+            @AuthenticationPrincipal User currentUser) {
+        userService.deleteUser(userId, currentUser);
+        return ResponseEntity.ok(java.util.Map.of("message", "User deleted successfully from platform"));
+    }
 }

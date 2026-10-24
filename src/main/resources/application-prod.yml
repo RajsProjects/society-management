@@ -112,3 +112,11 @@ platform:
   admin:
     email: ${PLATFORM_ADMIN_EMAIL}
     password: ${PLATFORM_ADMIN_PASSWORD}
+
+# Subscription Enforcement (Default false for initial onboarding rollout; toggle to true for automated payment locks)
+subscription:
+  enforcement:
+    enabled: ${SUBSCRIPTION_ENFORCEMENT_ENABLED:false}
+  scheduler:
+    enabled: ${SUBSCRIPTION_SCHEDULER_ENABLED:false}
+

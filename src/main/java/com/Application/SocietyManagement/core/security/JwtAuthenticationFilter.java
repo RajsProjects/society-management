@@ -34,47 +34,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
+        try {
+            String header = request.getHeader("Authorization");
 
-        if (header == null || !header.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = header.substring(7);
-
-        Claims claims = jwtService.parseAndValidateClaims(token);
-        if (claims == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Invalid or expired token\",\"path\":\"" + request.getRequestURI() + "\"}");
-            return;
-        }
-
-        String email = claims.getSubject();
-        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-        if (userDetails != null) {
-            if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Account is inactive, pending approval, or blocked\",\"path\":\"" + request.getRequestURI() + "\"}");
+            if (header == null || !header.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
                 return;
             }
 
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        }
+            String token = header.substring(7);
 
-        String societyId = claims.get("societyId", String.class);
-        if (societyId == null && userDetails instanceof User user) {
-            societyId = user.getSocietyId();
-        }
-        TenantContext.setSocietyId(societyId);
+            Claims claims = jwtService.parseAndValidateClaims(token);
+            if (claims == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Invalid or expired token\",\"path\":\"" + request.getRequestURI() + "\"}");
+                return;
+            }
 
-        try {
+            String email = claims.getSubject();
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+            if (userDetails != null) {
+                if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Account is inactive, pending approval, or blocked\",\"path\":\"" + request.getRequestURI() + "\"}");
+                    return;
+                }
+
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+
+            String societyId = claims.get("societyId", String.class);
+            if (societyId == null && userDetails instanceof User user) {
+                societyId = user.getSocietyId();
+            }
+            TenantContext.setSocietyId(societyId);
+
             filterChain.doFilter(request, response);
         } finally {
             TenantContext.clear();

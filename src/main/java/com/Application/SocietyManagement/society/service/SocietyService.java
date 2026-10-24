@@ -45,6 +45,7 @@ public class SocietyService {
     private final PasswordEncoder passwordEncoder;
     private final S3Service s3Service;
     private final JoinCodeGenerator joinCodeGenerator;
+    private final com.Application.SocietyManagement.communication.service.SocietyGroupService societyGroupService;
 
     @Value("${platform.trial-days:14}")
     private int trialDays;
@@ -131,6 +132,12 @@ public class SocietyService {
         // link superAdmin to society
         saved.setSuperAdminId(savedAdmin.getId());
         societyRepository.save(saved);
+
+        // Automatically create the 1 official group for the society and auto-join the admin
+        if (societyGroupService != null) {
+            societyGroupService.createOrGetGroupForSociety(saved);
+            societyGroupService.autoJoinResident(saved.getId(), savedAdmin.getId());
+        }
 
         log.info("Society registered: {} by {}",
                 saved.getName(), request.getEmail());
