@@ -3413,3 +3413,64 @@ body {
 .auth-role-note strong {
   color: var(--brown-800);
 }
+
+/* ── API Server Connection Indicator & Modal ── */
+.api-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 9px 14px;
+  background: var(--cream-100);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.api-status-bar:hover {
+  background: var(--cream-200);
+  border-color: var(--brown-400);
+}
+
+.api-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.api-status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.api-status-dot.offline {
+  background: #ef4444;
+}
+
+.api-status-text {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.api-status-action {
+  color: var(--brown-700);
+  font-weight: 600;
+  text-decoration: underline;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.modal-compact {
+  max-width: 440px;
+}
+

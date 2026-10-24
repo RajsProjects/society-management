@@ -58,6 +58,7 @@ while ((m = apiDefRe.exec(apiJs))) apiMethods.add(m[1]);
 apiMethods.add('ApiError');
 apiMethods.add('baseUrl');
 apiMethods.add('setBaseUrl');
+apiMethods.add('testConnection');
 const usedApi = new Set();
 const usedApiRe = /Api\.([A-Za-z_$][\w$]*)/g;
 while ((m = usedApiRe.exec(allJs))) usedApi.add(m[1]);

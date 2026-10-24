@@ -14,7 +14,12 @@
 
   const TOKEN_KEY = 'samaaj_token';
   const BASE_URL_KEY = 'samaaj_api_url';
-  const DEV_CANDIDATES = ['http://localhost:8081/api/v1', 'http://localhost:8080/api/v1'];
+  const DEV_CANDIDATES = [
+    'http://localhost:8081/api/v1',
+    'http://10.26.241.63:8081/api/v1',
+    'http://10.0.2.2:8081/api/v1',
+    'http://localhost:8080/api/v1'
+  ];
 
   class ApiError extends Error {
     constructor(message, status, traceId, body) {
@@ -41,17 +46,23 @@
   /**
    * Resolution order:
    *   1. Explicit override  -> localStorage.samaaj_api_url (Settings UI / debugging)
-   *   2. Window global      -> window.SAMAAJ_API_BASE (injected by the deploy template)
-   *   3. Same origin        -> "/api/v1" when the app is served by the API host or its proxy
-   *   4. Dev fallback       -> http://localhost:8081/api/v1
+   *   2. Native Bridge      -> window.AndroidBridge.getBackendHost() (Android container)
+   *   3. Window global      -> window.SAMAAJ_API_BASE (injected by the deploy template)
+   *   4. Same origin        -> "/api/v1" when served over https/http from a non-localhost host
+   *   5. Dev fallback       -> candidate discovery or DEV_CANDIDATES[0]
    */
   function resolveBaseUrl() {
     const override = localStorage.getItem(BASE_URL_KEY);
     if (override) return trimSlash(override);
 
+    if (global.AndroidBridge && typeof global.AndroidBridge.getBackendHost === 'function') {
+      const bridgeHost = global.AndroidBridge.getBackendHost();
+      if (bridgeHost) return trimSlash(bridgeHost);
+    }
+
     if (global.SAMAAJ_API_BASE) return trimSlash(global.SAMAAJ_API_BASE);
 
-    if (global.location && /^https?:$/.test(global.location.protocol) && !isLocalhost(global.location.hostname)) {
+    if (global.location && /^https?:$/.test(global.location.protocol) && global.location.hostname && !isLocalhost(global.location.hostname)) {
       return '/api/v1';
     }
 
@@ -189,25 +200,55 @@
   }
 
   /**
-   * Dev convenience: probe the known local ports once and remember the one that answers.
-   * No-op in production (same-origin base is used there).
+   * Dev convenience: probe the known local/LAN ports once and remember the one that answers.
    */
   async function discoverBase() {
-    if (!global.location || !isLocalhost(global.location.hostname)) return currentBase();
-    for (let i = 0; i < DEV_CANDIDATES.length; i++) {
-      const candidate = DEV_CANDIDATES[i];
-      try {
-        const probe = await fetch(candidate + '/health', { method: 'GET' });
-        if (probe.ok) {
-          cachedBase = candidate;
-          baseLocked = true;
-          return candidate;
-        }
-      } catch (_) {
-        // try next candidate
+    const override = localStorage.getItem(BASE_URL_KEY);
+    if (override) {
+      const ok = await testConnection(override);
+      if (ok) {
+        cachedBase = trimSlash(override);
+        baseLocked = true;
+        return cachedBase;
+      }
+    }
+
+    const candidates = [];
+    if (global.AndroidBridge && typeof global.AndroidBridge.getBackendHost === 'function') {
+      const bh = global.AndroidBridge.getBackendHost();
+      if (bh) candidates.push(trimSlash(bh));
+    }
+    DEV_CANDIDATES.forEach(function (c) {
+      if (!candidates.includes(c)) candidates.push(c);
+    });
+
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
+      const ok = await testConnection(candidate);
+      if (ok) {
+        cachedBase = candidate;
+        baseLocked = true;
+        return candidate;
       }
     }
     return currentBase();
+  }
+
+  async function testConnection(url) {
+    const target = trimSlash(url || currentBase());
+    try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = controller ? setTimeout(function () { controller.abort(); }, 1800) : null;
+      const probe = await fetch(target + '/health', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: controller ? controller.signal : undefined
+      });
+      if (timer) clearTimeout(timer);
+      return probe.ok;
+    } catch (_) {
+      return false;
+    }
   }
 
   global.Api = {
@@ -233,6 +274,7 @@
       cachedBase = trimSlash(value);
       localStorage.setItem(BASE_URL_KEY, cachedBase);
     },
-    discoverBase: discoverBase
+    discoverBase: discoverBase,
+    testConnection: testConnection
   };
 })(window);

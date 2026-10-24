@@ -138,6 +138,13 @@
             <span id="switchPrompt">Already have one?</span>
             <a href="javascript:void(0)" id="switchLink" onclick="toggleAuthMode()">Log in</a>
           </div>
+
+          <!-- API Connection Indicator -->
+          <div class="api-status-bar" id="apiStatusBar" onclick="openApiConfigModal()" title="Tap to configure backend server URL">
+            <span class="api-status-dot" id="apiStatusDot"></span>
+            <span class="api-status-text" id="apiStatusText">Checking backend server...</span>
+            <span class="api-status-action">Configure</span>
+          </div>
         </form>
 
         <!-- Signup submitted, awaiting society admin approval -->
@@ -1856,6 +1863,35 @@
       <div class="modal-footer">
         <button type="button" class="btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
         <button type="button" class="btn-danger" id="confirmActionBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Configure Server API URL -->
+  <div class="modal-overlay" id="apiConfigModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="apiConfigTitle">
+    <div class="modal-card modal-compact">
+      <div class="modal-header">
+        <h3 id="apiConfigTitle">Backend Server Connection</h3>
+        <button type="button" class="btn-close-modal" onclick="closeModal('apiConfigModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
+          Configure the Spring Boot REST API address. Tap a preset or type your custom URL.
+        </p>
+        <div class="form-group">
+          <label for="apiBaseInput" class="form-label">API Base URL</label>
+          <input type="text" id="apiBaseInput" class="form-input" placeholder="http://10.26.241.63:8081/api/v1" />
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+          <button type="button" class="btn-cancel" style="padding: 5px 10px; font-size: 0.76rem;" onclick="setApiPreset('http://10.26.241.63:8081/api/v1')">LAN Wi-Fi</button>
+          <button type="button" class="btn-cancel" style="padding: 5px 10px; font-size: 0.76rem;" onclick="setApiPreset('http://localhost:8081/api/v1')">Localhost:8081</button>
+          <button type="button" class="btn-cancel" style="padding: 5px 10px; font-size: 0.76rem;" onclick="setApiPreset('http://10.0.2.2:8081/api/v1')">Emulator</button>
+          <button type="button" class="btn-cancel" style="padding: 5px 10px; font-size: 0.76rem;" onclick="setApiPreset('https://api.samaaj.in/api/v1')">Production</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal('apiConfigModal')">Cancel</button>
+        <button type="button" class="btn-submit" onclick="saveApiBaseConfig()">Save &amp; Connect</button>
       </div>
     </div>
   </div>

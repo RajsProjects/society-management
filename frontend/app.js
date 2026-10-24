@@ -2634,10 +2634,54 @@
     showAuthScreen('Your session has expired. Please sign in again.');
   });
 
+  window.updateApiStatusIndicator = async function () {
+    const dot = document.getElementById('apiStatusDot');
+    const text = document.getElementById('apiStatusText');
+    if (!text || !dot) return;
+
+    const current = Api.baseUrl();
+    text.textContent = 'Probing ' + current + '...';
+    dot.className = 'api-status-dot';
+
+    const ok = await Api.testConnection();
+    if (ok) {
+      dot.className = 'api-status-dot online';
+      text.textContent = 'Server: ' + current;
+    } else {
+      dot.className = 'api-status-dot offline';
+      text.textContent = 'Offline (' + current + ')';
+    }
+  };
+
+  window.openApiConfigModal = function () {
+    const input = document.getElementById('apiBaseInput');
+    if (input) input.value = Api.baseUrl();
+    openModal('apiConfigModal');
+  };
+
+  window.setApiPreset = function (url) {
+    const input = document.getElementById('apiBaseInput');
+    if (input) input.value = url;
+  };
+
+  window.saveApiBaseConfig = async function () {
+    const input = document.getElementById('apiBaseInput');
+    const val = (input && input.value ? input.value : '').trim();
+    if (!val) {
+      showToast('Please enter a valid API URL', 'error');
+      return;
+    }
+    Api.setBaseUrl(val);
+    closeModal('apiConfigModal');
+    showFloatingToast('Server URL set. Checking connection...');
+    await window.updateApiStatusIndicator();
+  };
+
   // ── Auto-initialize ──
   document.addEventListener('DOMContentLoaded', async () => {
-    // In local development the backend may run on 8080 or 8081 - probe once.
+    // In local/LAN development probe available candidate endpoints
     await Api.discoverBase();
+    window.updateApiStatusIndicator();
 
     // A stored token is not proof of a session: confirm it with the backend first.
     if (Session.isAuthenticated()) {
