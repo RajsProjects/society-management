@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.users.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,6 +29,7 @@ public class UpdateResidentRequest {
 
     private Boolean isOwner;
 
+    @Pattern(regexp = "^$|^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d).{8,}$", message = "Password must be at least 8 characters long and contain uppercase, lowercase, and number")
     private String newPassword;
 
     private String notes;

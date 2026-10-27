@@ -28,6 +28,7 @@ public class GroupController {
             description = "Returns the single official community group for the caller's society, including member listings."
     )
     @GetMapping("/my-group")
+    @PreAuthorize("hasAnyRole('RESIDENT', 'ADMIN', 'SUPER_ADMIN', 'PLATFORM_ADMIN')")
     public ResponseEntity<SocietyGroupResponse> getMyGroup(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(societyGroupService.getMySocietyGroup(currentUser));
     }
@@ -37,6 +38,7 @@ public class GroupController {
             description = "Returns details of a society group. Residents can only access their own society's group. Platform admin can access any group."
     )
     @GetMapping("/{groupId}")
+    @PreAuthorize("hasAnyRole('RESIDENT', 'ADMIN', 'SUPER_ADMIN', 'PLATFORM_ADMIN')")
     public ResponseEntity<SocietyGroupResponse> getGroupById(
             @PathVariable String groupId,
             @AuthenticationPrincipal User currentUser) {

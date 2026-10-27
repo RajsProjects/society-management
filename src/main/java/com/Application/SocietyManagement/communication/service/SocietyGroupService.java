@@ -5,12 +5,14 @@ import com.Application.SocietyManagement.communication.dto.SocietyGroupResponse;
 import com.Application.SocietyManagement.communication.entity.SocietyGroup;
 import com.Application.SocietyManagement.communication.repository.SocietyGroupRepository;
 import com.Application.SocietyManagement.core.tenant.TenantContext;
+import com.Application.SocietyManagement.flat.dto.FlatResponse;
 import com.Application.SocietyManagement.flat.entity.Flat;
 import com.Application.SocietyManagement.flat.repository.FlatRepository;
 import com.Application.SocietyManagement.society.entity.Society;
 import com.Application.SocietyManagement.society.repository.SocietyRepository;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.enums.PlatformRole;
+import com.Application.SocietyManagement.users.enums.Roles;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -133,7 +135,7 @@ public class SocietyGroupService {
                 // Platform admin with no active tenant context: return first group or empty
                 List<SocietyGroup> all = societyGroupRepository.findAll();
                 if (!all.isEmpty()) {
-                    return toResponse(all.get(0));
+                    return toResponse(all.get(0), currentUser);
                 }
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No society groups found on platform");
             }
@@ -150,7 +152,7 @@ public class SocietyGroupService {
                     throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Society group not found for society: " + finalSocietyId);
                 });
 
-        return toResponse(group);
+        return toResponse(group, currentUser);
     }
 
     /**
@@ -172,7 +174,7 @@ public class SocietyGroupService {
             }
         }
 
-        return toResponse(group);
+        return toResponse(group, currentUser);
     }
 
     /**
@@ -184,7 +186,7 @@ public class SocietyGroupService {
         }
 
         return societyGroupRepository.findAll().stream()
-                .map(this::toResponse)
+                .map(g -> toResponse(g, currentUser))
                 .toList();
     }
 
@@ -228,7 +230,7 @@ public class SocietyGroupService {
         log.info("Platform admin {} manually added user {} to group {}",
                 currentUser.getEmail(), targetUser.getEmail(), groupId);
 
-        return toResponse(saved);
+        return toResponse(saved, currentUser);
     }
 
     /**
@@ -250,10 +252,10 @@ public class SocietyGroupService {
             SocietyGroup saved = societyGroupRepository.save(group);
             log.info("Platform admin {} manually removed user {} from group {}",
                     currentUser.getEmail(), targetUserId, groupId);
-            return toResponse(saved);
+            return toResponse(saved, currentUser);
         }
 
-        return toResponse(group);
+        return toResponse(group, currentUser);
     }
 
     /**
@@ -273,7 +275,11 @@ public class SocietyGroupService {
         }
     }
 
-    private SocietyGroupResponse toResponse(SocietyGroup group) {
+    public SocietyGroupResponse toResponse(SocietyGroup group) {
+        return toResponse(group, null);
+    }
+
+    public SocietyGroupResponse toResponse(SocietyGroup group, User currentUser) {
         Set<String> memberIds = group.getMemberUserIds() != null ? group.getMemberUserIds() : Collections.emptySet();
         List<User> users = userRepository.findAllById(memberIds);
 
@@ -292,16 +298,28 @@ public class SocietyGroupService {
                     ));
         }
 
+        boolean privileged = currentUser != null && (
+                currentUser.getPlatformRole() == PlatformRole.PLATFORM_ADMIN ||
+                currentUser.getRole() == Roles.ADMIN ||
+                currentUser.getRole() == Roles.SUPER_ADMIN
+        );
+
         Map<String, String> finalFlatMap = flatMap;
         List<GroupMemberDto> memberDtos = users.stream()
                 .map(u -> {
                     String fullName = ((u.getFirstName() != null ? u.getFirstName() : "") + " " +
                             (u.getLastName() != null ? u.getLastName() : "")).trim();
+                    boolean isSelf = currentUser != null && u.getId() != null && u.getId().equals(currentUser.getId());
+                    boolean canViewSensitive = privileged || isSelf;
+
+                    String displayEmail = canViewSensitive ? u.getEmail() : FlatResponse.maskEmail(u.getEmail());
+                    String displayPhone = canViewSensitive ? u.getPhone() : FlatResponse.maskPhone(u.getPhone());
+
                     return GroupMemberDto.builder()
                             .userId(u.getId())
-                            .name(fullName.isBlank() ? (u.getEmail() != null ? u.getEmail() : "Resident") : fullName)
-                            .email(u.getEmail())
-                            .phone(u.getPhone())
+                            .name(fullName.isBlank() ? (displayEmail != null ? displayEmail : "Resident") : fullName)
+                            .email(displayEmail)
+                            .phone(displayPhone)
                             .role(u.getRole() != null ? u.getRole().name() : "MEMBER")
                             .platformRole(u.getPlatformRole() != null ? u.getPlatformRole().name() : "SOCIETY_USER")
                             .flatId(u.getFlatId())

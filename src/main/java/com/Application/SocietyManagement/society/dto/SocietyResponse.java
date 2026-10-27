@@ -33,6 +33,10 @@ public class SocietyResponse {
     private Instant createdAt;
 
     public static SocietyResponse from(Society society) {
+        return from(society, true);
+    }
+
+    public static SocietyResponse from(Society society, boolean privileged) {
         return SocietyResponse.builder()
                 .id(society.getId())
                 .name(society.getName())
@@ -43,8 +47,8 @@ public class SocietyResponse {
                 .pincode(society.getPincode())
                 .totalFlats(society.getTotalFlats())
                 .status(society.getStatus())
-                .joinCode(society.getJoinCode())
-                .documentUrl(society.getDocumentUrl())
+                .joinCode(privileged ? society.getJoinCode() : null)
+                .documentUrl(privileged ? society.getDocumentUrl() : null)
                 .plan(society.getPlan())
                 .subscriptionStatus(society.getSubscriptionStatus())
                 .trialEndsAt(society.getTrialEndsAt())

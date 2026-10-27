@@ -15,11 +15,13 @@ import com.Application.SocietyManagement.users.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -45,7 +47,10 @@ public class DashboardController {
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<DashboardStats> getStats() {
-        final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+        final String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
 
         long now = System.currentTimeMillis();
         CachedDashboardStats cached = statsCache.get(societyId);
