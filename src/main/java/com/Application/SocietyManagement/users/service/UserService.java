@@ -202,16 +202,23 @@ public class UserService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify platform administrator");
             }
 
+            // Defense-in-depth: Caller must be society administrator (ADMIN or SUPER_ADMIN)
+            boolean isCallerSuperAdmin = currentUser.getRole() == Roles.SUPER_ADMIN;
+            boolean isCallerAdmin = currentUser.getRole() == Roles.ADMIN;
+            if (!isCallerAdmin && !isCallerSuperAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Insufficient privileges to modify resident accounts");
+            }
+
             // CRITICAL: Prevent unauthorized privilege escalation and account takeover.
             // A standard society ADMIN cannot modify a SUPER_ADMIN or another ADMIN.
-            if (user.getRole() == Roles.ADMIN || user.getRole() == Roles.SUPER_ADMIN) {
-                boolean isSelf = currentUser.getId() != null && currentUser.getId().equals(user.getId());
-                boolean isSuperAdmin = currentUser.getRole() == Roles.SUPER_ADMIN;
-                if (!isSuperAdmin && !isSelf) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify another administrator");
+            if (user.getRole() == Roles.SUPER_ADMIN) {
+                if (!isCallerSuperAdmin) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify users of equal or higher privilege (super administrator)");
                 }
-                if (user.getRole() == Roles.SUPER_ADMIN && !isSelf) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify super administrator");
+            } else if (user.getRole() == Roles.ADMIN) {
+                boolean isSelf = currentUser.getId() != null && currentUser.getId().equals(user.getId());
+                if (!isCallerSuperAdmin && !isSelf) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify another administrator");
                 }
             }
         }

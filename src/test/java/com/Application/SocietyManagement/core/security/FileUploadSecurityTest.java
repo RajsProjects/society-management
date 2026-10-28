@@ -1,6 +1,8 @@
 package com.Application.SocietyManagement.core.security;
 
+import com.Application.SocietyManagement.communication.service.SocietyGroupService;
 import com.Application.SocietyManagement.core.service.S3Service;
+import com.Application.SocietyManagement.core.util.JoinCodeGenerator;
 import com.Application.SocietyManagement.society.dto.RegisterSocietyRequest;
 import com.Application.SocietyManagement.society.repository.SocietyRepository;
 import com.Application.SocietyManagement.society.service.SocietyService;
@@ -43,6 +45,12 @@ class FileUploadSecurityTest {
         private S3Service s3Service;
 
         @Mock
+        private JoinCodeGenerator joinCodeGenerator;
+
+        @Mock
+        private SocietyGroupService societyGroupService;
+
+        @Mock
         private S3Client s3Client;
 
         @Mock
@@ -57,25 +65,23 @@ class FileUploadSecurityTest {
                                 societyRepository,
                                 userRepository,
                                 passwordEncoder,
-                                null,
                                 s3Service,
-                                null,
-                                null);
+                                joinCodeGenerator,
+                                societyGroupService);
 
-                validRequest = RegisterSocietyRequest.builder()
-                                .name("Green Heights")
-                                .registrationNumber("REG-SEC-1234")
-                                .email("admin@greenheights.com")
-                                .phone("9876543210")
-                                .password("Password@123")
-                                .firstName("Admin")
-                                .lastName("User")
-                                .address("123 Main St")
-                                .city("Bangalore")
-                                .state("Karnataka")
-                                .pincode("560001")
-                                .totalFlats(50)
-                                .build();
+                validRequest = new RegisterSocietyRequest();
+                validRequest.setName("Green Heights");
+                validRequest.setRegistrationNumber("REG-SEC-1234");
+                validRequest.setEmail("admin@greenheights.com");
+                validRequest.setPhone("9876543210");
+                validRequest.setPassword("Password@123");
+                validRequest.setFirstName("Admin");
+                validRequest.setLastName("User");
+                validRequest.setAddress("123 Main St");
+                validRequest.setCity("Bangalore");
+                validRequest.setState("Karnataka");
+                validRequest.setPincode("560001");
+                validRequest.setTotalFlats(50);
         }
 
         @Test
@@ -157,9 +163,18 @@ class FileUploadSecurityTest {
 
                 when(societyRepository.existsByRegistrationNumber("REG-SEC-1234")).thenReturn(false);
                 when(userRepository.findByEmail("admin@greenheights.com")).thenReturn(java.util.Optional.empty());
-                when(societyRepository.existsByJoinCode(any())).thenReturn(false);
-                when(societyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-                when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+                when(joinCodeGenerator.generate()).thenReturn("SOC-TEST123");
+                when(societyRepository.findByJoinCode("SOC-TEST123")).thenReturn(java.util.Optional.empty());
+                when(societyRepository.save(any())).thenAnswer(inv -> {
+                        com.Application.SocietyManagement.society.entity.Society s = inv.getArgument(0);
+                        s.setId("soc-test-id");
+                        return s;
+                });
+                when(userRepository.save(any())).thenAnswer(inv -> {
+                        com.Application.SocietyManagement.users.entity.User u = inv.getArgument(0);
+                        u.setId("usr-test-id");
+                        return u;
+                });
                 when(s3Service.uploadFile(any(), eq("application/pdf"), eq("society-documents")))
                                 .thenReturn("society-documents/uuid-random-key");
 
