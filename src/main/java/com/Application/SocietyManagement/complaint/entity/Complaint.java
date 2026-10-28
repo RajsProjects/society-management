@@ -14,7 +14,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
         @CompoundIndex(def = "{'societyId': 1, 'status': 1, 'createdAt': -1}", name = "complaint_society_status_idx"),
         @CompoundIndex(def = "{'societyId': 1, 'category': 1, 'createdAt': -1}", name = "complaint_society_cat_idx"),
         @CompoundIndex(def = "{'societyId': 1, 'status': 1, 'category': 1, 'createdAt': -1}", name = "complaint_society_status_cat_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'residentId': 1, 'createdAt': -1}", name = "complaint_society_resident_idx"),
         @CompoundIndex(def = "{'societyId': 1, 'residentId': 1, 'status': 1, 'createdAt': -1}", name = "complaint_society_resident_status_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'residentId': 1, 'category': 1, 'createdAt': -1}", name = "complaint_society_resident_cat_idx"),
+        @CompoundIndex(def = "{'societyId': 1, 'residentId': 1, 'status': 1, 'category': 1, 'createdAt': -1}", name = "complaint_society_resident_status_cat_idx"),
         @CompoundIndex(def = "{'societyId': 1, 'createdAt': -1}", name = "complaint_society_created_idx")
 })
 @Getter

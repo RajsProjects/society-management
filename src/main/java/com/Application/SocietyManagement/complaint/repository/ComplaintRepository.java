@@ -31,6 +31,14 @@ public interface ComplaintRepository
             String societyId, String residentId,
             ComplaintStatus status, Pageable pageable);
 
+    Page<Complaint> findBySocietyIdAndResidentIdAndCategory(
+            String societyId, String residentId,
+            ComplaintCategory category, Pageable pageable);
+
+    Page<Complaint> findBySocietyIdAndResidentIdAndStatusAndCategory(
+            String societyId, String residentId,
+            ComplaintStatus status, ComplaintCategory category, Pageable pageable);
+
     long countBySocietyId(String societyId);
     long countBySocietyIdAndStatus(String societyId, ComplaintStatus status);
     Optional<Complaint> findByIdAndSocietyId(String id, String societyId);
