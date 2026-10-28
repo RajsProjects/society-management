@@ -28,6 +28,12 @@ public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
 
+    private static final long STATS_TTL_MS = 10_000L;
+    private final java.util.concurrent.ConcurrentHashMap<String, CachedComplaintStats> complaintStatsCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedComplaintStats(java.util.Map<String, Long> stats, long expiresAt) {}
+
     private String requireSocietyId() {
         String societyId = TenantContext.getSocietyId();
         if (societyId == null || societyId.isBlank()) {
@@ -36,8 +42,15 @@ public class ComplaintService {
         return societyId;
     }
 
+    private void requireAuthenticated(User user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+    }
+
     public ComplaintResponse create(CreateComplaintRequest request,
                                     User currentUser) {
+        requireAuthenticated(currentUser);
         String societyId = requireSocietyId();
         String firstName = currentUser.getFirstName() != null ? currentUser.getFirstName().trim() : "";
         String lastName = currentUser.getLastName() != null ? currentUser.getLastName().trim() : "";
@@ -55,6 +68,7 @@ public class ComplaintService {
                 .build();
 
         Complaint saved = complaintRepository.save(complaint);
+        complaintStatsCache.remove(societyId);
         log.info("Complaint created by {} for society {}",
                 currentUser.getEmail(), saved.getSocietyId());
 
@@ -67,6 +81,7 @@ public class ComplaintService {
             int page, int size,
             User currentUser) {
 
+        requireAuthenticated(currentUser);
         String societyId = requireSocietyId();
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -95,11 +110,21 @@ public class ComplaintService {
             }
         } else {
             // resident sees only own complaints
-            if (status != null) {
+            if (status != null && category != null) {
+                result = complaintRepository
+                        .findBySocietyIdAndResidentIdAndStatusAndCategory(
+                                societyId, currentUser.getId(),
+                                status, category, pageable);
+            } else if (status != null) {
                 result = complaintRepository
                         .findBySocietyIdAndResidentIdAndStatus(
                                 societyId, currentUser.getId(),
                                 status, pageable);
+            } else if (category != null) {
+                result = complaintRepository
+                        .findBySocietyIdAndResidentIdAndCategory(
+                                societyId, currentUser.getId(),
+                                category, pageable);
             } else {
                 result = complaintRepository
                         .findBySocietyIdAndResidentId(
@@ -119,6 +144,7 @@ public class ComplaintService {
     }
 
     public ComplaintResponse getById(String complaintId, User currentUser) {
+        requireAuthenticated(currentUser);
         Complaint complaint = findComplaint(complaintId);
         validateAccess(complaint, currentUser);
         return ComplaintResponse.from(complaint);
@@ -127,6 +153,13 @@ public class ComplaintService {
     public ComplaintResponse updateStatus(String complaintId,
                                           UpdateComplaintRequest request,
                                           User currentUser) {
+        requireAuthenticated(currentUser);
+        boolean isAdmin = currentUser.getRole() == Roles.ADMIN
+                || currentUser.getRole() == Roles.SUPER_ADMIN;
+        if (!isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only administrators can update complaint status");
+        }
+
         Complaint complaint = findComplaint(complaintId);
         validateAccess(complaint, currentUser);
 
@@ -138,11 +171,16 @@ public class ComplaintService {
         }
 
         if (request.getStatus() == ComplaintStatus.RESOLVED) {
-            complaint.setResolvedBy(currentUser.getFirstName()
-                    + " " + currentUser.getLastName());
+            String first = currentUser.getFirstName() != null ? currentUser.getFirstName().trim() : "";
+            String last = currentUser.getLastName() != null ? currentUser.getLastName().trim() : "";
+            String resolverName = (first + " " + last).trim();
+            complaint.setResolvedBy(!resolverName.isEmpty() ? resolverName : currentUser.getEmail());
+        } else {
+            complaint.setResolvedBy(null);
         }
 
         Complaint saved = complaintRepository.save(complaint);
+        complaintStatsCache.remove(complaint.getSocietyId());
         log.info("Complaint {} status changed from {} to {} by {}",
                 complaintId, oldStatus, request.getStatus(),
                 currentUser.getEmail());
@@ -151,6 +189,7 @@ public class ComplaintService {
     }
 
     public void delete(String complaintId, User currentUser) {
+        requireAuthenticated(currentUser);
         Complaint complaint = findComplaint(complaintId);
         validateAccess(complaint, currentUser);
 
@@ -161,16 +200,12 @@ public class ComplaintService {
         }
 
         complaintRepository.delete(complaint);
+        complaintStatsCache.remove(complaint.getSocietyId());
         log.info("Complaint {} deleted by {}", complaintId,
                 currentUser.getEmail());
     }
 
     // ── Dashboard stats ──
-    private static final long STATS_TTL_MS = 10_000L;
-    private final java.util.concurrent.ConcurrentHashMap<String, CachedComplaintStats> complaintStatsCache =
-            new java.util.concurrent.ConcurrentHashMap<>();
-
-    private record CachedComplaintStats(java.util.Map<String, Long> stats, long expiresAt) {}
 
     public java.util.Map<String, Long> getStats() {
         final String societyId = requireSocietyId();

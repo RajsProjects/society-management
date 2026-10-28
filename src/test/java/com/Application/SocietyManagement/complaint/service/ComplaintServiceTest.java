@@ -236,4 +236,83 @@ class ComplaintServiceTest {
 
         verify(complaintRepository, never()).delete(any());
     }
+
+    @Test
+    @DisplayName("updateStatus - resident cannot update complaint status (403)")
+    void updateStatus_asResident_forbidden() {
+        UpdateComplaintRequest updateReq = new UpdateComplaintRequest();
+        updateReq.setStatus(ComplaintStatus.RESOLVED);
+        updateReq.setAdminNote("Attempting self-resolution");
+
+        assertThatThrownBy(() -> complaintService.updateStatus("complaint-1", updateReq, residentUser))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Only administrators can update complaint status");
+
+        verify(complaintRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("getComplaints - resident queries with both status and category")
+    void getComplaints_asResident_withStatusAndCategory() {
+        Page<Complaint> page = new PageImpl<>(List.of(complaint));
+        when(complaintRepository.findBySocietyIdAndResidentIdAndStatusAndCategory(
+                eq(SOCIETY_ID), eq("resident-1"), eq(ComplaintStatus.OPEN), eq(ComplaintCategory.PLUMBING), any(Pageable.class)))
+                .thenReturn(page);
+
+        PagedResponse<ComplaintResponse> result = complaintService.getComplaints(
+                ComplaintStatus.OPEN, ComplaintCategory.PLUMBING, 0, 10, residentUser);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(complaintRepository).findBySocietyIdAndResidentIdAndStatusAndCategory(
+                eq(SOCIETY_ID), eq("resident-1"), eq(ComplaintStatus.OPEN), eq(ComplaintCategory.PLUMBING), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("getComplaints - resident queries with category only")
+    void getComplaints_asResident_withCategoryOnly() {
+        Page<Complaint> page = new PageImpl<>(List.of(complaint));
+        when(complaintRepository.findBySocietyIdAndResidentIdAndCategory(
+                eq(SOCIETY_ID), eq("resident-1"), eq(ComplaintCategory.PLUMBING), any(Pageable.class)))
+                .thenReturn(page);
+
+        PagedResponse<ComplaintResponse> result = complaintService.getComplaints(
+                null, ComplaintCategory.PLUMBING, 0, 10, residentUser);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(complaintRepository).findBySocietyIdAndResidentIdAndCategory(
+                eq(SOCIETY_ID), eq("resident-1"), eq(ComplaintCategory.PLUMBING), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("updateStatus - null lastName sets resolvedBy to firstName or email without 'null'")
+    void updateStatus_resolvedBy_nullSafe() {
+        when(complaintRepository.findByIdAndSocietyId("complaint-1", SOCIETY_ID))
+                .thenReturn(Optional.of(complaint));
+        when(complaintRepository.save(any(Complaint.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User adminNullLast = User.builder()
+                .email("admin2@example.com")
+                .firstName("Supervisor")
+                .lastName(null)
+                .role(Roles.ADMIN)
+                .status(Status.ACTIVE)
+                .societyId(SOCIETY_ID)
+                .build();
+        adminNullLast.setId("admin-2");
+
+        UpdateComplaintRequest updateReq = new UpdateComplaintRequest();
+        updateReq.setStatus(ComplaintStatus.RESOLVED);
+
+        ComplaintResponse response = complaintService.updateStatus("complaint-1", updateReq, adminNullLast);
+
+        assertThat(response.getResolvedBy()).isEqualTo("Supervisor");
+    }
+
+    @Test
+    @DisplayName("requireAuthenticated - unauthenticated user throws 401")
+    void unauthenticatedUser_throwsUnauthorized() {
+        assertThatThrownBy(() -> complaintService.create(createRequest, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("User not authenticated");
+    }
 }
