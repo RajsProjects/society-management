@@ -244,15 +244,32 @@ public class SocietyService {
     private record CachedSocietyResponse(SocietyResponse response, long expiresAt) {}
 
     public SocietyResponse getMySociety() {
-        final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+        User currentUser = null;
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User u) {
+            currentUser = u;
+        }
+        return getMySociety(currentUser);
+    }
+
+    public SocietyResponse getMySociety(User currentUser) {
+        String societyId = requireSocietyId();
+        boolean privileged = currentUser != null && (
+                currentUser.getPlatformRole() == PlatformRole.PLATFORM_ADMIN ||
+                currentUser.getRole() == Roles.ADMIN ||
+                currentUser.getRole() == Roles.SUPER_ADMIN
+        );
+
         long now = System.currentTimeMillis();
-        CachedSocietyResponse cached = societyCache.get(societyId);
+        String cacheKey = societyId + ":" + (privileged ? "priv" : "pub");
+        CachedSocietyResponse cached = societyCache.get(cacheKey);
         if (cached != null && now < cached.expiresAt()) {
             return cached.response();
         }
 
-        SocietyResponse response = SocietyResponse.from(findById(societyId));
-        societyCache.put(societyId, new CachedSocietyResponse(response, now + SOCIETY_CACHE_TTL_MS));
+        SocietyResponse response = SocietyResponse.from(findById(societyId), privileged);
+        societyCache.put(cacheKey, new CachedSocietyResponse(response, now + SOCIETY_CACHE_TTL_MS));
         return response;
     }
 
@@ -272,6 +289,14 @@ public class SocietyService {
         return societyRepository.findById(societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Society not found"));
+    }
+
+    private String requireSocietyId() {
+        String societyId = TenantContext.getSocietyId();
+        if (societyId == null || societyId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
+        }
+        return societyId;
     }
 
     private String generateUniqueJoinCode() {

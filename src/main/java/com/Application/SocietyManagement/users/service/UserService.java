@@ -13,6 +13,7 @@ import com.Application.SocietyManagement.users.enums.Status;
 import com.Application.SocietyManagement.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,9 @@ public class UserService {
     private final SocietyGroupService societyGroupService;
     private final PasswordEncoder passwordEncoder;
 
+    @Autowired(required = false)
+    private CustomUserDetailsService customUserDetailsService;
+
     public UserSummarydto updateStatus(String userId, Status status) {
         String societyId = requireSocietyId();
         User user = userRepository.findByIdAndSocietyId(userId, societyId)
@@ -46,6 +50,10 @@ public class UserService {
 
         user.setStatus(status);
         User saved = userRepository.save(user);
+
+        if (customUserDetailsService != null && saved.getEmail() != null) {
+            customUserDetailsService.evictUser(saved.getEmail());
+        }
 
         // Auto-join society community group upon activation
         if (status == Status.ACTIVE && saved.getSocietyId() != null && societyGroupService != null) {
@@ -134,6 +142,10 @@ public class UserService {
             user.setPasswordHash(effectiveEncoder.encode(request.getNewPassword()));
         }
         userRepository.save(user);
+
+        if (customUserDetailsService != null && user.getEmail() != null) {
+            customUserDetailsService.evictUser(user.getEmail());
+        }
     }
 
     /**
@@ -162,6 +174,9 @@ public class UserService {
         }
 
         userRepository.delete(user);
+        if (customUserDetailsService != null && user.getEmail() != null) {
+            customUserDetailsService.evictUser(user.getEmail());
+        }
         log.info("Platform admin {} permanently deleted user {}", currentUser.getEmail(), userId);
     }
 
@@ -186,7 +201,29 @@ public class UserService {
             if (user.getPlatformRole() == PlatformRole.PLATFORM_ADMIN) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify platform administrator");
             }
+
+            // Defense-in-depth: Caller must be society administrator (ADMIN or SUPER_ADMIN)
+            boolean isCallerSuperAdmin = currentUser.getRole() == Roles.SUPER_ADMIN;
+            boolean isCallerAdmin = currentUser.getRole() == Roles.ADMIN;
+            if (!isCallerAdmin && !isCallerSuperAdmin) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Insufficient privileges to modify resident accounts");
+            }
+
+            // CRITICAL: Prevent unauthorized privilege escalation and account takeover.
+            // A standard society ADMIN cannot modify a SUPER_ADMIN or another ADMIN.
+            if (user.getRole() == Roles.SUPER_ADMIN) {
+                if (!isCallerSuperAdmin) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify users of equal or higher privilege (super administrator)");
+                }
+            } else if (user.getRole() == Roles.ADMIN) {
+                boolean isSelf = currentUser.getId() != null && currentUser.getId().equals(user.getId());
+                if (!isCallerSuperAdmin && !isSelf) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot modify another administrator");
+                }
+            }
         }
+
+        String oldEmail = user.getEmail();
 
         // Check email uniqueness if email is modified
         if (request.getEmail() != null && !request.getEmail().trim().equalsIgnoreCase(user.getEmail())) {
@@ -212,11 +249,26 @@ public class UserService {
         if (request.getIsOwner() != null) {
             user.setOwner(request.getIsOwner());
         }
-        if (request.getNewPassword() != null && !request.getNewPassword().isBlank() && passwordEncoder != null) {
-            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword().trim()));
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            String pwd = request.getNewPassword().trim();
+            if (pwd.length() < 8 || !pwd.matches("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d).+$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 8 characters long and contain uppercase, lowercase, and number");
+            }
+            if (passwordEncoder != null) {
+                user.setPasswordHash(passwordEncoder.encode(pwd));
+            }
         }
 
         User saved = userRepository.save(user);
+
+        if (customUserDetailsService != null) {
+            if (oldEmail != null) {
+                customUserDetailsService.evictUser(oldEmail);
+            }
+            if (saved.getEmail() != null) {
+                customUserDetailsService.evictUser(saved.getEmail());
+            }
+        }
 
         // Ensure user remains auto-joined to their society group
         if (saved.getSocietyId() != null && societyGroupService != null) {

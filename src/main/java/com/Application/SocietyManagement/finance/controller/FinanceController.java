@@ -52,7 +52,7 @@ public class FinanceController {
             @ApiResponse(responseCode = "400", description = "Invalid status filter")
     })
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT', 'ACCOUNTANT')")
     public ResponseEntity<PagedResponse<MaintenanceBillDto>> getBills(
             @AuthenticationPrincipal User currentUser,
             @Parameter(description = "Filter by status: PENDING, PAID, OVERDUE")
@@ -74,7 +74,7 @@ public class FinanceController {
             @ApiResponse(responseCode = "404", description = "Bill not found")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT', 'ACCOUNTANT')")
     public ResponseEntity<MaintenanceBillDto> getBillById(
             @Parameter(description = "Bill ID") @PathVariable String id,
             @AuthenticationPrincipal User currentUser) {

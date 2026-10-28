@@ -23,7 +23,7 @@ jwt:
 security:
   pepper: ${SECURITY_PEPPER}
   rate-limit:
-    max-requests: ${RATE_LIMIT_MAX_REQUESTS:2000}
+    max-requests: ${RATE_LIMIT_MAX_REQUESTS:120}
 
 app:
   frontend:

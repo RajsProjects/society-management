@@ -173,7 +173,7 @@ public class ComplaintService {
     private record CachedComplaintStats(java.util.Map<String, Long> stats, long expiresAt) {}
 
     public java.util.Map<String, Long> getStats() {
-        final String societyId = TenantContext.getSocietyId() != null ? TenantContext.getSocietyId() : "default";
+        final String societyId = requireSocietyId();
 
         long now = System.currentTimeMillis();
         CachedComplaintStats cached = complaintStatsCache.get(societyId);
@@ -198,10 +198,7 @@ public class ComplaintService {
     }
 
     private Complaint findComplaint(String complaintId) {
-        String societyId = TenantContext.getSocietyId();
-        if (societyId == null || societyId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No society context");
-        }
+        String societyId = requireSocietyId();
         return complaintRepository.findByIdAndSocietyId(complaintId, societyId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Complaint not found"));
