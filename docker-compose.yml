@@ -5,10 +5,24 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - SERVER_PORT=8080
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
+      - SECURITY_PEPPER=${SECURITY_PEPPER}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     env_file:
       - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
     networks:
       - society-network
@@ -49,6 +63,7 @@ services:
       - society-network
     depends_on:
       - prometheus
+
   redis:
     image: redis:7-alpine
     container_name: society-redis
@@ -56,6 +71,11 @@ services:
       - redis-data:/data
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q 'PONG\\|NOAUTH' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - society-network
 
