@@ -3,6 +3,7 @@ package com.Application.SocietyManagement.users.controller;
 import com.Application.SocietyManagement.users.dto.*;
 import com.Application.SocietyManagement.users.entity.User;
 import com.Application.SocietyManagement.users.service.AuthService;
+import com.Application.SocietyManagement.core.idempotency.Idempotent;
 import com.Application.SocietyManagement.users.service.InviteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -67,7 +68,8 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Invite sent"),
             @ApiResponse(responseCode = "409", description = "Email already registered or invited")
     })
-    @PostMapping("/invite")
+    @PostMapping("/invite")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Map<String, String>> invite(
             @RequestBody @Valid InviteRequest request,

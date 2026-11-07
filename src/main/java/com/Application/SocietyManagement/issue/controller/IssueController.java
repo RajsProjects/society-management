@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.issue.controller;
 
 import com.Application.SocietyManagement.issue.dto.*;
 import com.Application.SocietyManagement.issue.enums.IssueStatus;
+import com.Application.SocietyManagement.core.idempotency.Idempotent;
 import com.Application.SocietyManagement.issue.service.IssueService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
@@ -32,6 +33,7 @@ public class IssueController {
             @ApiResponse(responseCode = "400", description = "Missing title or description")
     })
     @PostMapping
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT')")
     public ResponseEntity<IssueResponse> createIssue(
             @RequestBody @Valid IssueRequest request,
@@ -109,7 +111,8 @@ public class IssueController {
             @ApiResponse(responseCode = "404", description = "Issue not found"),
             @ApiResponse(responseCode = "409", description = "Already voted on this issue")
     })
-    @PostMapping("/{id}/votes")
+    @PostMapping("/{id}/votes")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'RESIDENT')")
     public ResponseEntity<Void> addVote(
             @Parameter(description = "Issue ID") @PathVariable String id,

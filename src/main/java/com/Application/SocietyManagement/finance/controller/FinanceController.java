@@ -2,6 +2,7 @@ package com.Application.SocietyManagement.finance.controller;
 
 import com.Application.SocietyManagement.finance.dto.*;
 import com.Application.SocietyManagement.finance.enums.BillStatus;
+import com.Application.SocietyManagement.core.idempotency.Idempotent;
 import com.Application.SocietyManagement.finance.service.MaintenanceBillService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
@@ -36,6 +37,7 @@ public class FinanceController {
             @ApiResponse(responseCode = "409", description = "Bill already exists for this month")
     })
     @PostMapping
+    @Idempotent
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MaintenanceBillDto> createBill(
             @RequestBody @Valid CreateBillRequest request) {
@@ -92,7 +94,8 @@ public class FinanceController {
             @ApiResponse(responseCode = "404", description = "Bill not found"),
             @ApiResponse(responseCode = "409", description = "Bill already paid or duplicate transaction submitted")
     })
-    @PostMapping("/{id}/pay")
+    @PostMapping("/{id}/pay")
+    @Idempotent
     @PreAuthorize("hasRole('RESIDENT')")
     public ResponseEntity<Map<String, String>> payBill(
             @Parameter(description = "Bill ID") @PathVariable String id,
@@ -105,7 +108,8 @@ public class FinanceController {
             summary = "Verify bill payment",
             description = "Approves a pending payment reference after bank reconciliation. Admin/Accountant only."
     )
-    @PostMapping("/{id}/verify-payment")
+    @PostMapping("/{id}/verify-payment")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT')")
     public ResponseEntity<MaintenanceBillDto> verifyPayment(
             @Parameter(description = "Bill ID") @PathVariable String id,
@@ -117,7 +121,8 @@ public class FinanceController {
             summary = "Reject bill payment",
             description = "Rejects a fraudulent or unverified payment reference. Admin/Accountant only."
     )
-    @PostMapping("/{id}/reject-payment")
+    @PostMapping("/{id}/reject-payment")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT')")
     public ResponseEntity<MaintenanceBillDto> rejectPayment(
             @Parameter(description = "Bill ID") @PathVariable String id,

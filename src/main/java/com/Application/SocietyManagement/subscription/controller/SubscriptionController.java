@@ -3,6 +3,7 @@ package com.Application.SocietyManagement.subscription.controller;
 import com.Application.SocietyManagement.subscription.dto.CreateOrderRequest;
 import com.Application.SocietyManagement.subscription.dto.OrderResponse;
 import com.Application.SocietyManagement.subscription.dto.VerifyPaymentRequest;
+import com.Application.SocietyManagement.core.idempotency.Idempotent;
 import com.Application.SocietyManagement.subscription.service.SubscriptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,20 +18,23 @@ public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
 
-    @PostMapping("/create-order")
+    @PostMapping("/create-order")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         return ResponseEntity.ok(subscriptionService.createOrder(request.getPlan()));
     }
 
-    @PostMapping("/verify-payment")
+    @PostMapping("/verify-payment")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> verifyPayment(@Valid @RequestBody VerifyPaymentRequest request) {
         subscriptionService.verifyPayment(request);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/change-plan")
+    @PostMapping("/change-plan")
+    @Idempotent
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<OrderResponse> changePlan(@Valid @RequestBody CreateOrderRequest request) {
         return ResponseEntity.ok(subscriptionService.changePlan(request.getPlan()));

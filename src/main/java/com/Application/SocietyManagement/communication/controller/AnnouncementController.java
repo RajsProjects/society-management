@@ -3,6 +3,7 @@ package com.Application.SocietyManagement.communication.controller;
 import com.Application.SocietyManagement.communication.dto.AnnouncementRequest;
 import com.Application.SocietyManagement.communication.dto.AnnouncementResponse;
 import com.Application.SocietyManagement.communication.enums.AnnouncementType;
+import com.Application.SocietyManagement.core.idempotency.Idempotent;
 import com.Application.SocietyManagement.communication.service.AnnouncementService;
 import com.Application.SocietyManagement.users.dto.PagedResponse;
 import com.Application.SocietyManagement.users.entity.User;
@@ -34,6 +35,7 @@ public class AnnouncementController {
             @ApiResponse(responseCode = "403", description = "Not an admin")
     })
     @PostMapping
+    @Idempotent
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AnnouncementResponse> create(
             @RequestBody @Valid AnnouncementRequest request,
