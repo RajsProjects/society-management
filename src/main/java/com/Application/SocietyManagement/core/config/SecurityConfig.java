@@ -43,12 +43,13 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final SubscriptionEnforcementFilter subscriptionEnforcementFilter;
     private final com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter;
+    private final com.Application.SocietyManagement.core.idempotency.IdempotencyFilter idempotencyFilter;
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
                           JwtService jwtService,
                           RateLimitingFilter rateLimitingFilter,
                           SubscriptionEnforcementFilter subscriptionEnforcementFilter) {
-        this(customUserDetailsService, jwtService, rateLimitingFilter, subscriptionEnforcementFilter, new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter());
+        this(customUserDetailsService, jwtService, rateLimitingFilter, subscriptionEnforcementFilter, new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter(), null);
     }
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
@@ -56,11 +57,21 @@ public class SecurityConfig {
                           RateLimitingFilter rateLimitingFilter,
                           SubscriptionEnforcementFilter subscriptionEnforcementFilter,
                           com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter) {
+        this(customUserDetailsService, jwtService, rateLimitingFilter, subscriptionEnforcementFilter, tenantContextCleanupFilter, null);
+    }
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService,
+                          JwtService jwtService,
+                          RateLimitingFilter rateLimitingFilter,
+                          SubscriptionEnforcementFilter subscriptionEnforcementFilter,
+                          com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter tenantContextCleanupFilter,
+                          @org.springframework.beans.factory.annotation.Autowired(required = false) com.Application.SocietyManagement.core.idempotency.IdempotencyFilter idempotencyFilter) {
         this.customUserDetailsService = customUserDetailsService;
         this.jwtService = jwtService;
         this.rateLimitingFilter = rateLimitingFilter;
         this.subscriptionEnforcementFilter = subscriptionEnforcementFilter;
         this.tenantContextCleanupFilter = tenantContextCleanupFilter != null ? tenantContextCleanupFilter : new com.Application.SocietyManagement.core.tenant.TenantContextCleanupFilter();
+        this.idempotencyFilter = idempotencyFilter;
     }
 
     @Value("${security.pepper}")
@@ -200,6 +211,10 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 )
                 .addFilterAfter(subscriptionEnforcementFilter, JwtAuthenticationFilter.class);
+
+        if (idempotencyFilter != null) {
+            http.addFilterAfter(idempotencyFilter, SubscriptionEnforcementFilter.class);
+        }
 
         return http.build();
     }

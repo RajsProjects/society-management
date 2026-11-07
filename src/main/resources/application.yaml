@@ -123,7 +123,7 @@ aws:
   access-key: ${AWS_ACCESS_KEY_ID:dummy}
   secret-key: ${AWS_SECRET_ACCESS_KEY:dummy}
   s3:
-    bucket: civiclink-documents-dev
+    bucket: ${AWS_S3_BUCKET:civiclink-documents-dev}
     presigned-url-expiry: 3600
 
 razorpay:
